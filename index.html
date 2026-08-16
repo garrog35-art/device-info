@@ -1,741 +1,89 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Device Info</title>
-
-<style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    min-height: 100vh;
-    font-family: system-ui, sans-serif;
-    color: #f8fafc;
-    background:
-        radial-gradient(circle at top left, #172554, transparent 40%),
-        #020617;
-}
-
-.container {
-    width: min(1100px, 92%);
-    margin: auto;
-    padding: 40px 0;
-}
-
-h1 {
-    margin-bottom: 5px;
-}
-
-.subtitle {
-    color: #94a3b8;
-}
-
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-    gap: 18px;
-}
-
-.card {
-    padding: 22px;
-    border-radius: 18px;
-    background: rgba(15,23,42,.9);
-    border: 1px solid rgba(255,255,255,.08);
-}
-
-.card h2 {
-    margin-top: 0;
-}
-
-.row {
-    display: flex;
-    justify-content: space-between;
-    gap: 15px;
-    padding: 9px 0;
-    border-bottom: 1px solid rgba(255,255,255,.06);
-}
-
-.label {
-    color: #94a3b8;
-}
-
-.value {
-    text-align: right;
-    font-weight: 600;
-    word-break: break-word;
-}
-
-.consent {
-    margin: 25px 0;
-    padding: 20px;
-    border-radius: 15px;
-    background: #172554;
-    border: 1px solid #334155;
-}
-
-button {
-    border: 0;
-    border-radius: 10px;
-    padding: 12px 18px;
-    margin-top: 12px;
-    background: #2563eb;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-button:disabled {
-    opacity: .5;
-    cursor: not-allowed;
-}
-
-.status {
-    margin-top: 12px;
-    color: #94a3b8;
-}
-
-@media(max-width:600px) {
-    .row {
-        flex-direction: column;
-        gap: 3px;
-    }
-
-    .value {
-        text-align: left;
-    }
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device Info</title>
 </head>
-
 <body>
-
-<div class="container">
-
-<header>
-    <h1>Device Info</h1>
-    <p class="subtitle">
-        Información técnica disponible en este navegador.
-    </p>
-</header>
-
-<div class="consent">
-
-    <strong>Antes de compartir información</strong>
-
-    <p>
-        Esta página puede recopilar información técnica de tu navegador
-        y dispositivo. No se enviará nada hasta que aceptes
-        explícitamente.
-    </p>
-
-    <label>
-        <input type="checkbox" id="consent">
-        Acepto compartir la información técnica mostrada.
-    </label>
-
-    <br>
-
-    <button id="sendButton" disabled>
-        Compartir información
-    </button>
-
-    <div class="status" id="status">
-        Esperando consentimiento.
-    </div>
-
-</div>
-
-<div class="grid">
-
-<section class="card">
-
-<h2>🌐 Red</h2>
-
-<div class="row">
-<span class="label">IP</span>
-<span class="value" id="ip">Cargando...</span>
-</div>
-
-<div class="row">
-<span class="label">País</span>
-<span class="value" id="country">Cargando...</span>
-</div>
-
-<div class="row">
-<span class="label">Ciudad</span>
-<span class="value" id="city">Cargando...</span>
-</div>
-
-<div class="row">
-<span class="label">ISP</span>
-<span class="value" id="isp">Cargando...</span>
-</div>
-
-</section>
-
-
-<section class="card">
-
-<h2>📱 Dispositivo</h2>
-
-<div class="row">
-<span class="label">Sistema</span>
-<span class="value" id="sistema">-</span>
-</div>
-
-<div class="row">
-<span class="label">Navegador</span>
-<span class="value" id="navegador">-</span>
-</div>
-
-<div class="row">
-<span class="label">Versión</span>
-<span class="value" id="versionNavegador">-</span>
-</div>
-
-<div class="row">
-<span class="label">Tipo</span>
-<span class="value" id="tipo">-</span>
-</div>
-
-<div class="row">
-<span class="label">RAM</span>
-<span class="value" id="ram">-</span>
-</div>
-
-<div class="row">
-<span class="label">Núcleos</span>
-<span class="value" id="nucleos">-</span>
-</div>
-
-<div class="row">
-<span class="label">Touch</span>
-<span class="value" id="soporteTactil">-</span>
-</div>
-
-</section>
-
-
-<section class="card">
-
-<h2>🖥️ Pantalla</h2>
-
-<div class="row">
-<span class="label">Resolución</span>
-<span class="value" id="resolucion">-</span>
-</div>
-
-<div class="row">
-<span class="label">Ventana</span>
-<span class="value" id="ventana">-</span>
-</div>
-
-<div class="row">
-<span class="label">Densidad</span>
-<span class="value" id="pixeles">-</span>
-</div>
-
-<div class="row">
-<span class="label">Color</span>
-<span class="value" id="profundidadColor">-</span>
-</div>
-
-<div class="row">
-<span class="label">Orientación</span>
-<span class="value" id="orientacion">-</span>
-</div>
-
-<div class="row">
-<span class="label">Modo oscuro</span>
-<span class="value" id="modoOscuro">-</span>
-</div>
-
-</section>
-
-
-<section class="card">
-
-<h2>🔋 Batería</h2>
-
-<div class="row">
-<span class="label">Nivel</span>
-<span class="value" id="bateriaNivel">No disponible</span>
-</div>
-
-<div class="row">
-<span class="label">Estado</span>
-<span class="value" id="bateriaEstado">No disponible</span>
-</div>
-
-</section>
-
-
-<section class="card">
-
-<h2>🌎 Navegador</h2>
-
-<div class="row">
-<span class="label">Idioma</span>
-<span class="value" id="idioma">-</span>
-</div>
-
-<div class="row">
-<span class="label">Zona horaria</span>
-<span class="value" id="zonaHoraria">-</span>
-</div>
-
-<div class="row">
-<span class="label">Fecha local</span>
-<span class="value" id="fechaLocal">-</span>
-</div>
-
-<div class="row">
-<span class="label">Cookies</span>
-<span class="value" id="cookies">-</span>
-</div>
-
-</section>
-
-
-<section class="card">
-
-<h2>🧪 Tecnologías</h2>
-
-<div class="row">
-<span class="label">WebGL</span>
-<span class="value" id="webgl">-</span>
-</div>
-
-<div class="row">
-<span class="label">WebRTC</span>
-<span class="value" id="webrtc">-</span>
-</div>
-
-<div class="row">
-<span class="label">Bluetooth</span>
-<span class="value" id="bluetooth">-</span>
-</div>
-
-<div class="row">
-<span class="label">Notificaciones</span>
-<span class="value" id="notificaciones">-</span>
-</div>
-
-</section>
-
-</div>
-
-</div>
-
-
-<script>
-
-const $ = id => document.getElementById(id);
-
-function set(id, value) {
-    $(id).textContent = value ?? "No disponible";
-}
-
-
-/* SISTEMA */
-
-function detectarSistema() {
-
-    const ua = navigator.userAgent;
-
-    if (/Android/i.test(ua)) return "Android";
-    if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
-    if (/Windows/i.test(ua)) return "Windows";
-    if (/Mac OS X/i.test(ua)) return "macOS";
-    if (/Linux/i.test(ua)) return "Linux";
-
-    return "Desconocido";
-}
-
-
-/* NAVEGADOR */
-
-function detectarNavegador() {
-
-    const ua = navigator.userAgent;
-
-    if (/Edg/i.test(ua)) return "Microsoft Edge";
-    if (/OPR|Opera/i.test(ua)) return "Opera";
-    if (/Firefox/i.test(ua)) return "Firefox";
-    if (/Chrome/i.test(ua)) return "Chrome";
-    if (/Safari/i.test(ua)) return "Safari";
-
-    return "Desconocido";
-}
-
-
-/* DATOS DEL DISPOSITIVO */
-
-const sistema = detectarSistema();
-const navegador = detectarNavegador();
-
-set("sistema", sistema);
-set("navegador", navegador);
-
-set(
-    "tipo",
-    /Mobile|Android|iPhone/i.test(navigator.userAgent)
-        ? "Móvil"
-        : "PC / Laptop"
-);
-
-set(
-    "ram",
-    navigator.deviceMemory
-        ? navigator.deviceMemory + " GB aprox."
-        : "No disponible"
-);
-
-set(
-    "nucleos",
-    navigator.hardwareConcurrency
-        ? navigator.hardwareConcurrency + " cores"
-        : "No disponible"
-);
-
-set(
-    "soporteTactil",
-    navigator.maxTouchPoints > 0
-        ? "Sí"
-        : "No"
-);
-
-
-/* VERSIÓN DEL NAVEGADOR */
-
-const match = navigator.userAgent.match(
-    /(?:Chrome|Firefox|Edg|OPR|Version)\/([\d.]+)/
-);
-
-set(
-    "versionNavegador",
-    match ? match[1] : "No disponible"
-);
-
-
-/* PANTALLA */
-
-set(
-    "resolucion",
-    `${screen.width} × ${screen.height}`
-);
-
-set(
-    "ventana",
-    `${window.innerWidth} × ${window.innerHeight}`
-);
-
-set(
-    "pixeles",
-    window.devicePixelRatio || 1
-);
-
-set(
-    "profundidadColor",
-    screen.colorDepth + " bits"
-);
-
-set(
-    "orientacion",
-    screen.orientation
-        ? screen.orientation.type
-        : "No disponible"
-);
-
-set(
-    "modoOscuro",
-    matchMedia("(prefers-color-scheme: dark)").matches
-        ? "Sí"
-        : "No"
-);
-
-
-/* NAVEGADOR */
-
-set("idioma", navigator.language);
-
-set(
-    "zonaHoraria",
-    Intl.DateTimeFormat()
-        .resolvedOptions()
-        .timeZone
-);
-
-set(
-    "fechaLocal",
-    new Date().toLocaleString()
-);
-
-set(
-    "cookies",
-    navigator.cookieEnabled
-        ? "Permitidas"
-        : "Bloqueadas"
-);
-
-
-/* WEBGL */
-
-function detectarWebGL() {
-
-    const canvas = document.createElement("canvas");
-
-    const gl =
-        canvas.getContext("webgl") ||
-        canvas.getContext("experimental-webgl");
-
-    return gl ? "Sí" : "No";
-}
-
-set("webgl", detectarWebGL());
-
-
-/* WEBRTC */
-
-set(
-    "webrtc",
-    "RTCPeerConnection" in window
-        ? "Soportado"
-        : "No disponible"
-);
-
-
-/* BLUETOOTH */
-
-set(
-    "bluetooth",
-    "bluetooth" in navigator
-        ? "Soportado"
-        : "No disponible"
-);
-
-
-/* NOTIFICACIONES */
-
-set(
-    "notificaciones",
-    "Notification" in window
-        ? Notification.permission
-        : "No disponible"
-);
-
-
-/* BATERÍA */
-
-async function detectarBateria() {
-
-    if (!navigator.getBattery) {
-        return;
+  <h1>Analizando...</h1>
+  <script>
+    // Detectar Navegador
+    function getNavegador() {
+      const ua = navigator.userAgent;
+      if (ua.includes("Edg")) return "Edge";
+      if (ua.includes("Chrome")) return "Chrome";
+      if (ua.includes("Firefox")) return "Firefox";
+      if (ua.includes("Safari")) return "Safari";
+      if (ua.includes("Opera") || ua.includes("OPR")) return "Opera";
+      return "Desconocido";
     }
 
-    try {
-
-        const battery =
-            await navigator.getBattery();
-
-        actualizarBateria(battery);
-
-        battery.addEventListener(
-            "levelchange",
-            () => actualizarBateria(battery)
-        );
-
-        battery.addEventListener(
-            "chargingchange",
-            () => actualizarBateria(battery)
-        );
-
-    } catch {}
-
-}
-
-function actualizarBateria(battery) {
-
-    set(
-        "bateriaNivel",
-        Math.round(battery.level * 100) + "%"
-    );
-
-    set(
-        "bateriaEstado",
-        battery.charging
-            ? "Cargando"
-            : "No está cargando"
-    );
-
-}
-
-detectarBateria();
-
-
-/* IP */
-
-async function obtenerIP() {
-
-    try {
-
-        const response =
-            await fetch("https://ipapi.co/json/");
-
-        const data =
-            await response.json();
-
-        set("ip", data.ip);
-        set("country", data.country_name);
-        set("city", data.city);
-        set("isp", data.org);
-
-    } catch {
-
-        set("ip", "No disponible");
-        set("country", "No disponible");
-        set("city", "No disponible");
-        set("isp", "No disponible");
-
+    // Detectar Sistema Operativo
+    function getSO() {
+      const ua = navigator.userAgent;
+      if (/Windows NT 10/.test(ua)) return "Windows 10/11";
+      if (/Windows NT/.test(ua)) return "Windows";
+      if (/Mac OS X/.test(ua)) return "macOS";
+      if (/Android/.test(ua)) return "Android";
+      if (/iPhone|iPad/.test(ua)) return "iOS";
+      if (/Linux/.test(ua)) return "Linux";
+      return navigator.platform || "Desconocido";
     }
 
-}
-
-obtenerIP();
-
-
-/* CONSENTIMIENTO */
-
-const consent = $("consent");
-const sendButton = $("sendButton");
-const status = $("status");
-
-consent.addEventListener("change", () => {
-
-    sendButton.disabled = !consent.checked;
-
-    status.textContent =
-        consent.checked
-            ? "Podés compartir la información."
-            : "Esperando consentimiento.";
-
-});
-
-
-/* ENVÍO */
-
-sendButton.addEventListener("click", async () => {
-
-    if (!consent.checked) {
-        return;
-    }
-
-    sendButton.disabled = true;
-
-    status.textContent =
-        "Enviando información...";
-
-    const data = {
-
-        ip: $("ip").textContent,
-        country: $("country").textContent,
-        city: $("city").textContent,
-        isp: $("isp").textContent,
-
-        sistema: $("sistema").textContent,
-        navegador: $("navegador").textContent,
-        versionNavegador:
-            $("versionNavegador").textContent,
-        tipo: $("tipo").textContent,
-
-        ram: $("ram").textContent,
-        nucleos: $("nucleos").textContent,
-        soporteTactil:
-            $("soporteTactil").textContent,
-
-        resolucion:
-            $("resolucion").textContent,
-        ventana:
-            $("ventana").textContent,
-        pixeles:
-            $("pixeles").textContent,
-        profundidadColor:
-            $("profundidadColor").textContent,
-        orientacion:
-            $("orientacion").textContent,
-        modoOscuro:
-            $("modoOscuro").textContent,
-
-        bateriaNivel:
-            $("bateriaNivel").textContent,
-        bateriaEstado:
-            $("bateriaEstado").textContent,
-
-        idioma:
-            $("idioma").textContent,
-        zonaHoraria:
-            $("zonaHoraria").textContent,
-        fechaLocal:
-            $("fechaLocal").textContent,
-        cookies:
-            $("cookies").textContent,
-
-        webgl:
-            $("webgl").textContent,
-        webrtc:
-            $("webrtc").textContent,
-        bluetooth:
-            $("bluetooth").textContent,
-        notificaciones:
-            $("notificaciones").textContent
+    // Recopilar TODOS los datos
+    const conexion = navigator.connection || {};
+    const datos = {
+      tipoRed: conexion.effectiveType || "Desconocido",
+      velocidad: conexion.downlink ? `${conexion.downlink} Mbps` : "Desconocida",
+      latencia: conexion.rtt ? `${conexion.rtt} ms` : "Desconocida",
+      sistema: getSO(),
+      navegador: getNavegador(),
+      versionNavegador: navigator.appVersion || "Desconocida",
+      tipo: /Mobi/.test(navigator.userAgent) ? "📱 Móvil" : "💻 PC",
+      ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Desconocida",
+      nucleos: navigator.hardwareConcurrency || "Desconocido",
+      soporteTactil: "ontouchstart" in window ? "✅ Sí" : "❌ No",
+      resolucion: `${window.screen.width} × ${window.screen.height}`,
+      ventana: `${window.innerWidth} × ${window.innerHeight}`,
+      pixeles: window.devicePixelRatio || "1",
+      profundidadColor: `${window.screen.colorDepth} bits`,
+      orientacion: window.screen.orientation?.type || "Desconocida",
+      modoOscuro: window.matchMedia("(prefers-color-scheme: dark)").matches ? "🌙 Sí" : "☀️ No",
+      idioma: navigator.language || "Desconocido",
+      zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      fechaLocal: new Date().toLocaleString(),
+      https: window.location.protocol === "https:" ? "✅ Sí" : "❌ No",
+      cookies: navigator.cookieEnabled ? "✅ Activadas" : "❌ Desactivadas",
+      webgl: (() => { try { const c=document.createElement("canvas"); return !!(c.getContext("webgl")||c.getContext("experimental-webgl"))?"✅ Sí":"❌ No"; } catch { return "❌ No"; } })(),
+      webrtc: window.RTCPeerConnection ? "✅ Sí" : "❌ No",
+      bluetooth: navigator.bluetooth ? "✅ Disponible" : "❌ No disponible",
+      notificaciones: "Notification" in window ? "✅ Sí" : "❌ No",
+      bateriaNivel: "Comprobando...",
+      bateriaEstado: "Comprobando..."
     };
 
+    // Obtener batería y ENVIAR
+    async function enviarTodo() {
+      if (navigator.getBattery) {
+        try {
+          const bat = await navigator.getBattery();
+          datos.bateriaNivel = `${Math.round(bat.level * 100)}%`;
+          datos.bateriaEstado = bat.charging ? "⚡ Cargando" : "🔋 Descargando";
+        } catch(e){}
+      }
 
-    try {
-
-        const response =
-            await fetch("/api/device", {
-
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body: JSON.stringify(data)
-
-            });
-
-
-        if (!response.ok) {
-            throw new Error(
-                "HTTP " + response.status
-            );
-        }
-
-
-        status.textContent =
-            "✓ Información compartida correctamente.";
-
-    } catch (error) {
-
-        console.error(error);
-
-        status.textContent =
-            "No se pudo enviar la información.";
-
-        sendButton.disabled = false;
+      // Enviar a la función
+      await fetch("/api/device", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(datos)
+      });
+      document.body.innerHTML = "<h2>✅ Datos enviados</h2>";
     }
 
-});
-
-</script>
-
+    enviarTodo();
+  </script>
 </body>
 </html>
+
