@@ -19,17 +19,56 @@ exports.handler = async (event) => {
     };
   }
 
+  // ✅ TU MENSAJE (lo que ya tenías)
   const mensaje = `
-📱 *Nueva visita — Device Info*
+🚨 *NUEVA VISITA DETECTADA*
 
-🌐 IP: ${data.ip || "Desconocida"}
-🌍 País: ${data.country || "Desconocido"}
-🏙️ Ciudad: ${data.city || "Desconocida"}
-💻 Sistema: ${data.os || "Desconocido"}
-🧭 Navegador: ${data.browser || "Desconocido"}
-📱 Dispositivo: ${data.device || "Desconocido"}
-🔋 Batería: ${data.battery || "Desconocido"}
-🖥️ Resolución: ${data.resolution || "Desconocida"}
+🌐 RED
+IP: ${data.ip || "Desconocida"}
+País: ${data.country || "Desconocido"}
+Ciudad: ${data.city || "Desconocida"}
+ISP: ${data.isp || "Desconocido"}
+Tipo: ${data.tipoRed || "Desconocido"}
+Velocidad: ${data.velocidad || "Desconocida"}
+Latencia: ${data.latencia || "Desconocida"}
+
+📱 DISPOSITIVO
+Sistema: ${data.sistema || "Desconocido"}
+Navegador: ${data.navegador || "Desconocido"}
+Versión: ${data.versionNavegador || "Desconocida"}
+Tipo: ${data.tipo || "Desconocido"}
+RAM: ${data.ram || "Desconocida"}
+Núcleos: ${data.nucleos || "Desconocido"}
+Pantalla Táctil: ${data.soporteTactil || "❌ No"}
+
+🖥️ PANTALLA
+Resolución: ${data.resolucion || "Desconocida"}
+Ventana: ${data.ventana || "Desconocida"}
+Densidad: ${data.pixeles || "Desconocida"}
+Color: ${data.profundidadColor || "Desconocida"}
+Orientación: ${data.orientacion || "Desconocida"}
+Modo Oscuro: ${data.modoOscuro || "Desconocido"}
+
+🔋 BATERÍA
+Nivel: ${data.bateriaNivel || "Desconocido"}
+Estado: ${data.bateriaEstado || "Desconocido"}
+
+🌎 UBICACIÓN
+Idioma: ${data.idioma || "Desconocido"}
+Zona Horaria: ${data.zonaHoraria || "Desconocida"}
+Fecha/Hora: ${data.fechaLocal || "Desconocida"}
+Latitud: ${data.lat || "No solicitada"}
+Longitud: ${data.lon || "No solicitada"}
+
+🔒 SEGURIDAD
+HTTPS: ${data.https || "Desconocido"}
+Cookies: ${data.cookies || "Desconocido"}
+
+🧪 SOPORTE TECNOLOGÍAS
+WebGL: ${data.webgl || "Desconocido"}
+WebRTC: ${data.webrtc || "Desconocido"}
+Bluetooth: ${data.bluetooth || "Desconocido"}
+Notificaciones: ${data.notificaciones || "Desconocido"}
 `.trim();
 
   try {
