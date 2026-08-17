@@ -1,47 +1,33 @@
 const mensaje = `
-🚨 *NUEVA VISITA DETECTADA*
+📱 *NUEVA VISITA — Device Info*
 
 🌐 RED
-IP: ${ip}
-País: ${event.headers["x-country"] || "Desconocido"}
-Ciudad: ${event.headers["x-city"] || "Desconocida"}
-ISP: ${event.headers["x-isp"] || "Desconocido"}
+IP: ${data.ip || "Desconocida"}
+País: ${data.country || "Desconocido"}
+Ciudad: ${data.city || "Desconocida"}
+ISP: ${data.isp || "Desconocido"}
+Conexión: ${data.conexion || "Desconocida"}
 Tipo: ${data.tipoRed || "Desconocido"}
-Velocidad: ${data.velocidad || "Desconocida"}
-Latencia: ${data.latencia || "Desconocida"}
 
 📱 DISPOSITIVO
-Sistema: ${data.sistema || "Desconocido"}
-Navegador: ${data.navegador || "Desconocido"}
-Versión: ${data.versionNavegador || "Desconocida"}
-Tipo: ${data.tipo || "Desconocido"}
+Sistema: ${data.os || "Desconocido"}
+Navegador: ${data.browser || "Desconocido"}
+Tipo: ${data.dispositivo || "Desconocido"}
 RAM: ${data.ram || "Desconocida"}
 Núcleos: ${data.nucleos || "Desconocido"}
-Pantalla Táctil: ${data.soporteTactil || "❌ No"}
+Pantalla: ${data.pantalla || "Desconocida"}
+Densidad: ${data.pixelRatio || "Desconocido"}
 
-🖥️ PANTALLA
-Resolución: ${data.resolucion || "Desconocida"}
-Ventana: ${data.ventana || "Desconocida"}
-Densidad: ${data.pixeles || "Desconocida"}
-Color: ${data.profundidadColor || "Desconocida"}
-Orientación: ${data.orientacion || "Desconocida"}
-Modo Oscuro: ${data.modoOscuro || "Desconocido"}
-
-🔋 BATERÍA
-Nivel: ${data.bateriaNivel || "Desconocido"}
-Estado: ${data.bateriaEstado || "Desconocido"}
+🔋 ESTADO
+Batería: ${data.battery || "Desconocida"}
+Carga: ${data.cargando || "Desconocido"}
 
 🌎 UBICACIÓN
 Idioma: ${data.idioma || "Desconocido"}
-Zona Horaria: ${data.zonaHoraria || "Desconocida"}
-Fecha/Hora: ${data.fechaLocal || "Desconocida"}
+Zona: ${data.zonaHoraria || "Desconocida"}
 
-🔒 SEGURIDAD
-HTTPS: ${data.https || "Desconocido"}
-Cookies: ${data.cookies || "Desconocido"}
-
-🧪 SOPORTE
-WebGL: ${data.webgl || "Desconocido"}
-WebRTC: ${data.webrtc || "Desconocido"}
+🔒 EXTRAS
+Pantalla táctil: ${data.toque || "❌ No"}
+Cookies: ${data.cookies || "❌ No"}
 `.trim();
 

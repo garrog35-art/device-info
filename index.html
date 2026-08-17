@@ -1,83 +1,42 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Device Info</title>
-</head>
-<body>
-  <h1>Enviando...</h1>
-  <script>
-    // Detectar Navegador
-    function getNavegador() {
-      const ua = navigator.userAgent;
-      if (ua.includes("Edg")) return "Edge";
-      if (ua.includes("Chrome")) return "Chrome";
-      if (ua.includes("Firefox")) return "Firefox";
-      if (ua.includes("Safari")) return "Safari";
-      return "Desconocido";
-    }
+const data = {
+  // 🌐 RED
+  ip: "", // la detecta el servidor
+  country: "",
+  city: "",
+  isp: "",
+  conexion: navigator.connection ? `${navigator.connection.effectiveType} / ${navigator.connection.downlink} Mbps` : "No disponible",
+  tipoRed: navigator.connection ? navigator.connection.type : "Desconocido",
 
-    // Detectar Sistema Operativo
-    function getSO() {
-      const ua = navigator.userAgent;
-      if (/Windows NT 10/.test(ua)) return "Windows 10/11";
-      if (/Windows NT/.test(ua)) return "Windows";
-      if (/Mac OS X/.test(ua)) return "macOS";
-      if (/Android/.test(ua)) return "Android";
-      if (/iPhone|iPad/.test(ua)) return "iOS";
-      if (/Linux/.test(ua)) return "Linux";
-      return navigator.platform || "Desconocido";
-    }
+  // 📱 DISPOSITIVO
+  os: navigator.platform || navigator.userAgentData?.platform || "Desconocido",
+  browser: navigator.userAgent.includes("Chrome") ? "Chrome" : 
+           navigator.userAgent.includes("Firefox") ? "Firefox" : 
+           navigator.userAgent.includes("Safari") ? "Safari" : "Desconocido",
+  dispositivo: /Mobi/.test(navigator.userAgent) ? "Móvil" : "PC",
+  ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Desconocida",
+  nucleos: navigator.hardwareConcurrency || "Desconocido",
+  pantalla: `${window.screen.width} × ${window.screen.height}`,
+  pixelRatio: window.devicePixelRatio || 1,
 
-    // DATOS CON NOMBRES QUE COINCIDEN CON TU FUNCIÓN
-    const conexion = navigator.connection || {};
-    const datos = {
-      tipoRed: conexion.effectiveType || "Desconocido",
-      velocidad: conexion.downlink ? `${conexion.downlink} Mbps` : "Desconocida",
-      latencia: conexion.rtt ? `${conexion.rtt} ms` : "Desconocida",
-      sistema: getSO(),
-      navegador: getNavegador(),
-      versionNavegador: navigator.appVersion || "Desconocida",
-      tipo: /Mobi/.test(navigator.userAgent) ? "📱 Móvil" : "💻 PC",
-      ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Desconocida",
-      nucleos: navigator.hardwareConcurrency || "Desconocido",
-      soporteTactil: "ontouchstart" in window ? "✅ Sí" : "❌ No",
-      resolucion: `${window.screen.width} × ${window.screen.height}`,
-      ventana: `${window.innerWidth} × ${window.innerHeight}`,
-      pixeles: window.devicePixelRatio || "1",
-      profundidadColor: `${window.screen.colorDepth} bits`,
-      orientacion: window.screen.orientation?.type || "Desconocida",
-      modoOscuro: window.matchMedia("(prefers-color-scheme: dark)").matches ? "🌙 Sí" : "☀️ No",
-      idioma: navigator.language || "Desconocido",
-      zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      fechaLocal: new Date().toLocaleString(),
-      https: window.location.protocol === "https:" ? "✅ Sí" : "❌ No",
-      cookies: navigator.cookieEnabled ? "✅ Activadas" : "❌ Desactivadas",
-      webgl: "✅ Sí",
-      webrtc: window.RTCPeerConnection ? "✅ Sí" : "❌ No",
-      bateriaNivel: "No disponible",
-      bateriaEstado: "No disponible"
-    };
+  // 🔋 BATERÍA
+  bateria: "Comprobando...",
+  cargando: "Comprobando...",
 
-    // ENVIAR
-    fetch("/api/device", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(datos)
-    })
-    .then(r => r.json())
-    .then(res => {
-      if (res.success) {
-        document.body.innerHTML = "<h2>✅ Datos enviados a Telegram</h2>";
-      } else {
-        document.body.innerHTML = "<h2>❌ Error: " + (res.error || "Desconocido") + "</h2>";
-      }
-    })
-    .catch(err => {
-      document.body.innerHTML = "<h2>❌ Error de conexión</h2>";
-    });
-  </script>
-</body>
-</html>
+  // 🌎 IDIOMA Y ZONA
+  idioma: navigator.language || "Desconocido",
+  zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
+
+  // 🧭 OTRAS
+  toque: "ontouchstart" in window ? "✅ Sí" : "❌ No",
+  cookies: navigator.cookieEnabled ? "✅ Sí" : "❌ No",
+  incognito: "Desconocido"
+};
+
+// Obtener batería
+if (navigator.getBattery) {
+  navigator.getBattery().then(bat => {
+    data.bateria = `${Math.round(bat.level * 100)}%`;
+    data.cargando = bat.charging ? "⚡ Cargando" : "🔋 Descargando";
+  });
+}
 
